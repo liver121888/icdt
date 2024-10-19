@@ -39,7 +39,7 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration(use_rviz_parameter_name)
 
     franka_xacro_file = os.path.join(get_package_share_directory('franka_description'), 'robots',
-                                     'panda_arm.urdf.xacro')
+                                     'fr3_arm.urdf.xacro')
     robot_description = Command(
         [FindExecutable(name='xacro'), ' ', franka_xacro_file, ' hand:=', load_gripper,
          ' robot_ip:=', robot_ip, ' use_fake_hardware:=', use_fake_hardware,
@@ -90,7 +90,7 @@ def generate_launch_description():
             executable='joint_state_publisher',
             name='joint_state_publisher',
             parameters=[
-                {'source_list': ['franka/joint_states', 'panda_gripper/joint_states'],
+                {'source_list': ['franka/joint_states', 'franka_gripper/joint_states'],
                  'rate': 30}],
         ),
         Node(

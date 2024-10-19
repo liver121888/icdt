@@ -148,7 +148,7 @@ def robot_description_dependent_nodes_spawner(
         'fr3_ros_controllers.yaml',
     )
 
-    run_move_group_node = Node(
+    move_group_node = Node(
         package='moveit_ros_move_group',
         executable='move_group',
         output='screen',
@@ -183,32 +183,36 @@ def robot_description_dependent_nodes_spawner(
         ros_arguments=['--log-level', 'warn'],
     )
 
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[
+            robot_description,
+            ],
+    )
+
+    ros2_control_node = Node(
+        package='controller_manager',
+        executable='ros2_control_node',
+        parameters=[franka_controllers,
+                    ros2_controllers_path,
+                    robot_description,
+                    {'arm_id': arm_id},
+                    ],
+        remappings=[('joint_states', 'franka/joint_states')],
+        output={
+            'stdout': 'screen',
+            'stderr': 'screen',
+        },
+        on_exit=Shutdown(),
+    )
+
     return [
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[
-                robot_description,
-                ],
-        ),
-        Node(
-            package='controller_manager',
-            executable='ros2_control_node',
-            parameters=[franka_controllers,
-                        ros2_controllers_path,
-                        robot_description,
-                        {'arm_id': arm_id},
-                        ],
-            remappings=[('joint_states', 'franka/joint_states')],
-            output={
-                'stdout': 'screen',
-                'stderr': 'screen',
-            },
-            on_exit=Shutdown(),
-        ),
-        run_move_group_node,
+        robot_state_publisher,
+        ros2_control_node,
+        move_group_node,
         rviz_node]
 
 
@@ -239,6 +243,38 @@ def generate_launch_description():
             fake_sensor_commands,
             load_gripper,
             use_rviz])
+    
+    joint_state_publisher = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        name='joint_state_publisher',
+        parameters=[
+            {'source_list': ['franka/joint_states', 'franka_gripper/joint_states'],
+                'rate': 30}],
+    )
+
+    spawn_joint_state_broadcaster = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['joint_state_broadcaster'],
+        output='screen',
+    )
+
+    spawn_franka_robot_state_broadcaster = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['franka_robot_state_broadcaster'],
+        # parameters=[{'arm_id': arm_id}],
+        output='screen',
+        condition=UnlessCondition(use_fake_hardware),
+    )
+
+    spawn_fr3_arm_controller = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['fr3_arm_controller'],
+        output='screen',
+    )
 
     launch_description = LaunchDescription([
         DeclareLaunchArgument(
@@ -255,11 +291,11 @@ def generate_launch_description():
             description='Visualize the robot in Rviz'),
         DeclareLaunchArgument(
             use_fake_hardware_parameter_name,
-            default_value='true',
+            default_value='false',
             description='Use fake hardware'),
         DeclareLaunchArgument(
             fake_sensor_commands_parameter_name,
-            default_value='true',
+            default_value='false',
             description='Fake sensor commands. Only valid when "{}" is true'.format(
                 use_fake_hardware_parameter_name)),
         DeclareLaunchArgument(
@@ -272,35 +308,11 @@ def generate_launch_description():
             default_value='False',
             description='Database flag'
         ),                        
-        Node(
-            package='joint_state_publisher',
-            executable='joint_state_publisher',
-            name='joint_state_publisher',
-            parameters=[
-                {'source_list': ['franka/joint_states', 'franka_gripper/joint_states'],
-                 'rate': 30}],
-        ),
         robot_description_dependent_nodes_spawner_opaque_function,
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['joint_state_broadcaster'],
-            output='screen',
-        ),
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['franka_robot_state_broadcaster'],
-            parameters=[{'arm_id': arm_id}],
-            output='screen',
-            condition=UnlessCondition(use_fake_hardware),
-        ),
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['fr3_arm_controller'],
-            output='screen',
-        ),
+        joint_state_publisher,
+        spawn_joint_state_broadcaster,
+        spawn_franka_robot_state_broadcaster,
+        spawn_fr3_arm_controller,
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([PathJoinSubstitution(
                 [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),

@@ -7,6 +7,8 @@
     <xacro:group_definition arm_id="${arm_id}" group_name="${arm_id}_arm" tip_link="${arm_id}_link8"/>
 
     <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="${arm_id}_link0"/>
+    <!-- <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base"/> -->
+    <!-- <virtual_joint name="virtual_joint_prime" type="fixed" parent_frame="base" child_link="${arm_id}_link0"/> -->
     <disable_collisions link1="${arm_id}_link0" link2="${arm_id}_link1" reason="Adjacent"/>
     <disable_collisions link1="${arm_id}_link0" link2="${arm_id}_link2" reason="Never"/>
     <disable_collisions link1="${arm_id}_link0" link2="${arm_id}_link3" reason="Never"/>
