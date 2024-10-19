@@ -1,3 +1,4 @@
+# ros2 controllers file
 controller_manager:
   ros__parameters:
     update_rate: 1000  # Hz
@@ -26,8 +27,11 @@ controller_manager:
     model_example_controller:
       type: franka_example_controllers/ModelExampleController
 
-    joint_trajectory_controller:
-      type: joint_trajectory_controller/JointTrajectoryController
+    fr3_arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController    
+
+    # joint_trajectory_controller:
+    #   type: joint_trajectory_controller/JointTrajectoryController
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -43,7 +47,7 @@ model_example_controller:
   ros__parameters:
     arm_id: fr3
 
-joint_trajectory_controller:
+fr3_arm_controller:
   ros__parameters:
     joints:
       - fr3_joint1

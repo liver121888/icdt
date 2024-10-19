@@ -1,3 +1,5 @@
+# ros2 controllers file
+# deprecated, can be replaced by lbr_bringup/controllers.yaml
 controller_manager:
   ros__parameters:
     update_rate: 1000  # Hz

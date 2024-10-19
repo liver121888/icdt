@@ -1,3 +1,5 @@
+# moveit controllers file
+# fr3_arm_controller here is the interface that talks to the joint_trajectory_controller
 controller_names:
   - fr3_arm_controller
   - fr3_gripper
