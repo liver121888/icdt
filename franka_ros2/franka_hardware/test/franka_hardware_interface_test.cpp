@@ -215,7 +215,7 @@ TEST_F(
   ASSERT_EQ(return_type, hardware_interface::return_type::OK);
   auto states = franka_hardware_interface.export_state_interfaces();
   ASSERT_EQ(states[state_interface_size - 1].get_name(),
-            "panda/robot_model");  // Last state interface is the robot model state
+            "fr3/robot_model");  // Last state interface is the robot model state
   EXPECT_NEAR(states[state_interface_size - 1].get_value(),
               *reinterpret_cast<double*>(&model_address),
               k_EPS);  // testing that the casted mock_model ptr
@@ -246,7 +246,7 @@ TEST_F(
   ASSERT_EQ(return_type, hardware_interface::return_type::OK);
   auto states = franka_hardware_interface.export_state_interfaces();
   ASSERT_EQ(states[state_interface_size - 2].get_name(),
-            "panda/robot_state");  // Last state interface is the robot model state
+            "fr3/robot_state");  // Last state interface is the robot model state
   EXPECT_NEAR(states[state_interface_size - 2].get_value(),
               *reinterpret_cast<double*>(&robot_state_address),
               k_EPS);  // testing that the casted robot state ptr

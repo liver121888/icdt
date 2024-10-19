@@ -41,7 +41,7 @@ class FrankaRobotState
   franka::RobotState* robot_state_ptr;
 
  private:
-  const std::string robot_name_{"panda"};
+  const std::string robot_name_{"fr3"};
   const std::string state_interface_name_{"robot_state"};
 };
 

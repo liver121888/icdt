@@ -201,7 +201,7 @@ class FrankaRobotModel
   franka::RobotState* robot_state;
 
  private:
-  const std::string arm_id_{"panda"};
+  const std::string arm_id_{"fr3"};
 
   const std::string robot_state_interface_name_{"robot_state"};
   const std::string robot_model_interface_name_{"robot_model"};
