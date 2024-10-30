@@ -17,6 +17,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/MotionPlanning.srv"
+  "srv/ObjectDetection.srv"
   DEPENDENCIES geometry_msgs
 )
 

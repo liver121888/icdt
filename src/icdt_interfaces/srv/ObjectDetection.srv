@@ -1,0 +1,6 @@
+# Request: A string with object class names separated by spaces, e.g., "can plate ball"
+string class_names
+
+---
+# Response: JSON-formatted string with detection details
+string detections

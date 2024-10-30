@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'hello_world = perception_server.hello_world:main'
+            'hello_world = perception_server.hello_world:main',
+            'detection_service = perception_server.detection_service:main'
         ],
     },
 )
