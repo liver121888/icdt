@@ -1,323 +1,267 @@
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ *
+ *  Copyright (c) 2021, PickNik Inc.
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of PickNik Inc. nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ *********************************************************************/
+
 #include <rclcpp/rclcpp.hpp>
-#include <memory>
-// // MoveitCpp
+#include <moveit/planning_scene/planning_scene.h>
+#include <moveit/global_planner/moveit_planning_pipeline.h>
+#include <moveit/robot_state/conversions.h>
+#include <moveit/kinematic_constraints/utils.h>
 #include <moveit/moveit_cpp/moveit_cpp.h>
 #include <moveit/moveit_cpp/planning_component.h>
-// // #include <moveit_visual_tools/moveit_visual_tools.h>
-// // namespace rvt = rviz_visual_tools;
+#include "icdt_interfaces/srv/motion_planning.hpp"
+
+class MoveItPlanningNode : public rclcpp::Node
+{
+public:
+  MoveItPlanningNode() : Node("moveit_planning_node") {}
+
+  std::shared_ptr<MoveItPlanningNode> shared_from_this()
+  {
+    return std::static_pointer_cast<MoveItPlanningNode>(Node::shared_from_this());
+  }
+
+  void initialize()
+  {
+    // Declare planning scene parameters
+    {
+      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "name", UNDEFINED);
+      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "robot_description", UNDEFINED);
+      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "joint_state_topic", UNDEFINED);
+      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "attached_collision_object_topic", UNDEFINED);
+      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "publish_planning_scene_topic", UNDEFINED);
+      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "monitored_planning_scene_topic", UNDEFINED);
+      this->declare_parameter<double>(PLANNING_SCENE_MONITOR_NS + "wait_for_initial_state_timeout", 10.0);
+    }
+
+    // Declare planning group parameters
+    {
+      this->declare_parameter<std::string>("planning_group", UNDEFINED);
+
+    // Declare planning pipeline parameters
+    {
+      this->declare_parameter<std::vector<std::string>>(PLANNING_PIPELINES_NS + "pipeline_names",
+                                                        std::vector<std::string>({ UNDEFINED }));
+      this->declare_parameter<std::string>(PLANNING_PIPELINES_NS + "namespace", UNDEFINED);
+    }
+
+    // Declare planning pipeline OMPL parameters
+    {
+      this->declare_parameter<std::vector<std::string>>(
+          "ompl.arm.planner_configs",
+          std::vector<std::string>(
+              { "SBLkConfigDefault",         "ESTkConfigDefault",   "LBKPIECEkConfigDefault",   "BKPIECEkConfigDefault",
+                "KPIECEkConfigDefault",      "RRTkConfigDefault",   "RRTConnectkConfigDefault", "RRTstarkConfigDefault",
+                "TRRTkConfigDefault",        "PRMkConfigDefault",   "PRMstarkConfigDefault",    "FMTkConfigDefault",
+                "BFMTkConfigDefault",        "PDSTkConfigDefault",  "STRIDEkConfigDefault",     "BiTRRTkConfigDefault",
+                "LBTRRTkConfigDefault",      "BiESTkConfigDefault", "ProjESTkConfigDefault",    "LazyPRMkConfigDefault",
+                "LazyPRMstarkConfigDefault", "SPARSkConfigDefault", "SPARStwokConfigDefault",   "TrajOptDefault" }));
+
+      this->declare_parameter<std::string>("ompl.planner_configs.SBLkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.ESTkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.LBKPIECEkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.BKPIECEkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.KPIECEkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.RRTkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.RRTConnectkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.RRTstarkConfigDefault.type", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.planner_configs.TRRTkConfigDefault.type", "geometric::TRRT");
+      this->declare_parameter<std::string>("ompl.planner_configs.PRMkConfigDefault.type", "geometric::PRM");
+      this->declare_parameter<std::string>("ompl.planner_configs.PRMstarkConfigDefault.type", "geometric::PRMstar");
+      this->declare_parameter<std::string>("ompl.planner_configs.FMTkConfigDefault.type", "geometric::FMT");
+      this->declare_parameter<std::string>("ompl.planner_configs.BFMTkConfigDefault.type", "geometric::BFMT");
+      this->declare_parameter<std::string>("ompl.planner_configs.PDSTkConfigDefault.type", "geometric::PDST");
+      this->declare_parameter<std::string>("ompl.planner_configs.STRIDEkConfigDefault.type", "geometric::STRIDE");
+      this->declare_parameter<std::string>("ompl.planner_configs.BiTRRTkConfigDefault.type", "geometric::BiTRRT");
+      this->declare_parameter<std::string>("ompl.planner_configs.LBTRRTkConfigDefault.type", "geometric::LBTRRT");
+      this->declare_parameter<std::string>("ompl.planner_configs.BiESTkConfigDefault.type", "geometric::BiEST");
+      this->declare_parameter<std::string>("ompl.planner_configs.ProjESTkConfigDefault.type", "geometric::ProjEST");
+      this->declare_parameter<std::string>("ompl.planner_configs.LazyPRMkConfigDefault.type", "geometric::LazyPRM");
+      this->declare_parameter<std::string>("ompl.planner_configs.LazyPRMstarkConfigDefault.type",
+                                           "geometric::LazyPRMstar");
+      this->declare_parameter<std::string>("ompl.planner_configs.SPARSkConfigDefault.type", "geometric::SPARS");
+      this->declare_parameter<std::string>("ompl.planner_configs.SPARStwokConfigDefault.type", "geometric::SPARStwo");
+      this->declare_parameter<std::string>("ompl.planner_configs.TrajOptDefault.type", "geometric::TrajOpt");
+      this->declare_parameter<std::string>("ompl.arm.projection_evaluator", "joints(A1, A2, A3, A4, A5, A6, A7)");
+
+      this->declare_parameter<std::vector<std::string>>("ompl.planning_plugins",
+                                                        std::vector<std::string>({ UNDEFINED }));
+      this->declare_parameter<std::string>("ompl.planning_plugin", UNDEFINED);
+
+      this->declare_parameter<std::string>("ompl.request_adapters", UNDEFINED);
+      this->declare_parameter<std::string>("ompl.response_adapters", UNDEFINED);
+      this->declare_parameter<double>("ompl.start_state_max_bounds_error", 0.1);
+    }
+
+    // Declare pilz_industrial_motion_planner parameters
+    {
+      this->declare_parameter<std::string>("pilz_industrial_motion_planner.capabilities", UNDEFINED);
+      this->declare_parameter<std::string>("pilz_industrial_motion_planner.default_planner_config", UNDEFINED);
+      this->declare_parameter<std::vector<std::string>>("pilz_industrial_motion_planner.planning_plugins",
+                                                    std::vector<std::string>({ UNDEFINED }));
+      this->declare_parameter<std::string>("pilz_industrial_motion_planner.planning_plugin", UNDEFINED);
+      this->declare_parameter<std::string>("pilz_industrial_motion_planner.request_adapters", UNDEFINED);
+      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_vel", 1.0);
+      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_acc", 2.25);
+      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_dec", -5.0);
+      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_rot_vel", 1.57);
+    }
+
+    // For IK calculation
+    {
+      this->declare_parameter<std::string>("robot_description_kinematics.arm.kinematics_solver", "pick_ik/PickIkPlugin");
+      this->declare_parameter<double>("robot_description_kinematics.arm.kinematics_solver_timeout", 0.05);
+      this->declare_parameter<int>("robot_description_kinematics.arm.kinematics_solver_attempts", 3);
+      this->declare_parameter<std::string>("robot_description_kinematics.arm.mode", "global");
+      this->declare_parameter<double>("robot_description_kinematics.arm.position_scale", 1.0); 
+      this->declare_parameter<double>("robot_description_kinematics.arm.rotation_scale", 0.5);
+      this->declare_parameter<double>("robot_description_kinematics.arm.position_threshold", 0.001);
+      this->declare_parameter<double>("robot_description_kinematics.arm.orientation_threshold", 0.01);
+      this->declare_parameter<double>("robot_description_kinematics.arm.cost_threshold", 0.001);
+      this->declare_parameter<double>("robot_description_kinematics.arm.minimal_displacement_weight", 0.0);
+      this->declare_parameter<double>("robot_description_kinematics.arm.gd_step_size", 0.0001);
+    }
+
+    // Declare PlanRequestParameters
+    {
+      this->declare_parameter<std::string>(PLAN_REQUEST_PARAM_NS + "planner_id", UNDEFINED);
+      this->declare_parameter<std::string>(PLAN_REQUEST_PARAM_NS + "planning_pipeline", UNDEFINED);
+      this->declare_parameter<int>(PLAN_REQUEST_PARAM_NS + "planning_attempts", 1);
+      this->declare_parameter<double>(PLAN_REQUEST_PARAM_NS + "planning_time", 1.0);
+      this->declare_parameter<double>(PLAN_REQUEST_PARAM_NS + "max_velocity_scaling_factor", 1.0);
+      this->declare_parameter<double>(PLAN_REQUEST_PARAM_NS + "max_acceleration_scaling_factor", 1.0);
+    }
+
+    // Trajectory Execution Functionality (required by the MoveItPlanningPipeline but not used within hybrid planning)
+    this->declare_parameter<std::string>("moveit_controller_manager", UNDEFINED);
+    // this->declare_parameter<bool>("allow_trajectory_execution", true);
+    // this->declare_parameter<bool>("moveit_manage_controllers", true);
+
+    using std::placeholders::_1;
+    using std::placeholders::_2;
+    MotionPlanningService = this->create_service<icdt_interfaces::srv::MotionPlanning>("motion_planning", std::bind(&MoveItPlanningNode::plan, this, _1, _2));
+
+    // Initialize MoveItCpp API
+    moveit_cpp::MoveItCpp::Options moveit_cpp_options(this->shared_from_this());
+    moveit_cpp_ = std::make_shared<moveit_cpp::MoveItCpp>(this->shared_from_this(), moveit_cpp_options);
+  }
+
+  void plan(const std::shared_ptr<icdt_interfaces::srv::MotionPlanning::Request> request,
+            std::shared_ptr<icdt_interfaces::srv::MotionPlanning::Response> response)
+  {
+    // response->sum = request->a + request->b + request->c;
+    // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request\na: %ld" " b: %ld" " c: %ld",
+    //               request->a, request->b, request->c);
+    // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back response: [%ld]", (long int)response->sum);
+
+
+    // Set parameters required by the planning component
+    moveit_cpp::PlanningComponent::PlanRequestParameters plan_params;
+    plan_params.planner_id = this->get_parameter(PLAN_REQUEST_PARAM_NS + "planner_id").as_string();
+    plan_params.planning_pipeline = this->get_parameter(PLAN_REQUEST_PARAM_NS + "planning_pipeline").as_string();
+    plan_params.planning_attempts = this->get_parameter(PLAN_REQUEST_PARAM_NS + "planning_attempts").as_int();
+    plan_params.planning_time = this->get_parameter(PLAN_REQUEST_PARAM_NS + "planning_time").as_double();
+    plan_params.max_velocity_scaling_factor =
+        this->get_parameter(PLAN_REQUEST_PARAM_NS + "max_velocity_scaling_factor").as_double();
+    plan_params.max_acceleration_scaling_factor =
+        this->get_parameter(PLAN_REQUEST_PARAM_NS + "max_acceleration_scaling_factor").as_double();
+
+    // update planning scene with current state
+    moveit_cpp_->getPlanningSceneMonitor()->updateSceneWithCurrentState();
+    auto group_name = this->get_parameter("planning_group").as_string();
+
+    // Create planning component
+    auto planning_components = std::make_shared<moveit_cpp::PlanningComponent>(group_name, moveit_cpp_);
+
+    // Set start state to current state
+    planning_components->setStartStateToCurrentState();
+
+    // Copy goal constraint into planning component
+    auto goalPose = request->goal;
+    auto robot_model = moveit_cpp_->getRobotModel();
+    auto goal_state = std::make_shared<moveit::core::RobotState>(robot_model);
+
+    auto joint_model_group = std::shared_ptr<const moveit::core::JointModelGroup>(
+        goal_state->getJointModelGroup(group_name));
+
+    bool success = goal_state->setFromIK(joint_model_group.get(), goalPose.pose);
+    RCLCPP_WARN(LOGGER, "IK success: %d", success);
+    std::vector<double> joint_values;
+    goal_state->copyJointGroupPositions(joint_model_group.get(), joint_values);
+    for (size_t i = 0; i < joint_values.size(); ++i)
+    {
+      RCLCPP_WARN(LOGGER, "Joint %ld: %f", i+1, joint_values[i]);
+    }
+
+    moveit_msgs::msg::Constraints goal_constraints =         
+        kinematic_constraints::constructGoalConstraints(*(goal_state.get()), joint_model_group.get());
+
+    planning_components->setGoal({goal_constraints});
+
+    // Plan motion
+    auto plan_solution = planning_components->plan(plan_params);
+    if (plan_solution.error_code == moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
+    {
+      response->success = true;
+    }
+    else
+    {
+      response->success = false;
+    }
+  }
+
+private:
+  const rclcpp::Logger LOGGER = rclcpp::get_logger("global_planner_component");
+  std::shared_ptr<moveit_cpp::MoveItCpp> moveit_cpp_;
+  const std::string PLANNING_SCENE_MONITOR_NS = "planning_scene_monitor_options.";
+  const std::string PLANNING_PIPELINES_NS = "planning_pipelines.";
+  const std::string PLAN_REQUEST_PARAM_NS = "plan_request_params.";
+  const std::string UNDEFINED = "<undefined>";
+  rclcpp::Service<icdt_interfaces::srv::MotionPlanning>::SharedPtr MotionPlanningService;
+
+  // rclcpp::Publisher<moveit_msgs::msg::MotionPlanResponse>::SharedPtr global_trajectory_pub_;
+  
+};
 
 int main(int argc, char** argv)
 {
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<MoveItPlanningNode>();
+
+  // Call initialize after creating the shared pointer instance
+  node->initialize();
+
+  rclcpp::spin(node);
+  rclcpp::shutdown();
   return 0;
-
 }
-
-// static const rclcpp::Logger LOGGER = rclcpp::get_logger("robot_motion_planning");
-
-// int main(int argc, char** argv)
-// {
-//   rclcpp::init(argc, argv);
-//   rclcpp::NodeOptions node_options;
-//   RCLCPP_INFO(LOGGER, "Initialize robot_motion_planning node");
-
-//   // This enables loading undeclared parameters
-//   // best practice would be to declare parameters in the corresponding classes
-//   // and provide descriptions about expected use
-//   node_options.automatically_declare_parameters_from_overrides(true);
-//   rclcpp::Node::SharedPtr node = rclcpp::Node::make_shared("robot_motion_planning", "", node_options);
-
-//   // We spin up a SingleThreadedExecutor for the current state monitor to get information
-//   // about the robot's state.
-//   rclcpp::executors::SingleThreadedExecutor executor;
-//   executor.add_node(node);
-//   std::thread([&executor]() { executor.spin(); }).detach();
-
-//   // BEGIN_TUTORIAL
-//   //
-//   // Setup
-//   // ^^^^^
-//   //
-//   static const std::string PLANNING_GROUP = "arm";
-//   static const std::string BASE_LINK = "link_0";
-//   static const std::string EE_LINK = "link_tool";
-
-//   // ros2_controllers
-//   static const std::vector<std::string> CONTROLLERS(1, "panda_arm_controller");
-
-//   /* Otherwise robot with zeros joint_states */
-
-//   // wait a while for ppl to observe
-//   rclcpp::sleep_for(std::chrono::seconds(10));
-
-//   RCLCPP_INFO(LOGGER, "Starting MoveIt Tutorials...");
-
-//   auto moveit_cpp_ptr = std::make_shared<moveit_cpp::MoveItCpp>(node);
-//   moveit_cpp_ptr->getPlanningSceneMonitorNonConst()->providePlanningSceneService();
-
-//   auto planning_components = std::make_shared<moveit_cpp::PlanningComponent>(PLANNING_GROUP, moveit_cpp_ptr);
-//   auto robot_model_ptr = moveit_cpp_ptr->getRobotModel();
-//   auto robot_start_state = planning_components->getStartState();
-//   auto joint_model_group_ptr = robot_model_ptr->getJointModelGroup(PLANNING_GROUP);
-
-//   // Visualization
-//   // ^^^^^^^^^^^^^
-//   //
-//   // The package MoveItVisualTools provides many capabilities for visualizing objects, robots,
-//   // and trajectories in RViz as well as debugging tools such as step-by-step introspection of a script
-//   // moveit_visual_tools::MoveItVisualTools visual_tools(node, BASE_LINK.c_str(), "robot_motion_planning",
-//   //                                                     moveit_cpp_ptr->getPlanningSceneMonitorNonConst());
-//   // visual_tools.deleteAllMarkers();
-//   // visual_tools.loadRemoteControl();
-
-//   // Eigen::Isometry3d text_pose = Eigen::Isometry3d::Identity();
-//   // text_pose.translation().z() = 1.75;
-//   // visual_tools.publishText(text_pose, "MoveItCpp_Demo", rvt::WHITE, rvt::XLARGE);
-//   // visual_tools.trigger();
-
-//   // Start the demo
-//   // ^^^^^^^^^^^^^^^^^^^^^^^^^
-//   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
-
-//   // Planning with MoveItCpp
-//   // ^^^^^^^^^^^^^^^^^^^^^^^
-//   // There are multiple ways to set the start and the goal states of the plan
-//   // they are illustrated in the following plan examples
-//   //
-//   // Plan #1
-//   // ^^^^^^^
-//   //
-//   // We can set the start state of the plan to the current state of the robot
-//   planning_components->setStartStateToCurrentState();
-
-//   // The first way to set the goal of the plan is by using geometry_msgs::PoseStamped ROS message type as follow
-//   geometry_msgs::msg::PoseStamped target_pose1;
-//   target_pose1.header.frame_id = BASE_LINK;
-//   target_pose1.pose.orientation.w = 1.0;
-//   target_pose1.pose.position.x = 0.28;
-//   target_pose1.pose.position.y = -0.2;
-//   target_pose1.pose.position.z = 0.5;
-//   planning_components->setGoal(target_pose1, EE_LINK);
-
-//   // Now, we call the PlanningComponents to compute the plan and visualize it.
-//   // Note that we are just planning
-//   const planning_interface::MotionPlanResponse plan_solution1 = planning_components->plan();
-
-//   // Check if PlanningComponents succeeded in finding the plan
-//   // if (plan_solution1)
-//   // {
-//   //   // Visualize the start pose in Rviz
-//   //   visual_tools.publishAxisLabeled(robot_start_state->getGlobalLinkTransform(EE_LINK), "start_pose");
-//   //   // Visualize the goal pose in Rviz
-//   //   visual_tools.publishAxisLabeled(target_pose1.pose, "target_pose");
-//   //   visual_tools.publishText(text_pose, "setStartStateToCurrentState", rvt::WHITE, rvt::XLARGE);
-//   //   // Visualize the trajectory in Rviz
-//   //   visual_tools.publishTrajectoryLine(plan_solution1.trajectory, joint_model_group_ptr);
-//   //   visual_tools.trigger();
-
-//   //   /* Uncomment if you want to execute the plan */
-//   //   /* bool blocking = true; */
-//   //   /* moveit_controller_manager::ExecutionStatus result = moveit_cpp_ptr->execute(plan_solution1.trajectory, blocking, CONTROLLERS); */
-//   // }
-
-//   // Plan #1 visualization:
-//   //
-//   // .. image:: images/moveitcpp_plan1.png
-//   //    :width: 250pt
-//   //    :align: center
-//   //
-//   // Start the next plan
-//   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
-//   // visual_tools.deleteAllMarkers();
-//   // visual_tools.trigger();
-
-//   // Plan #2
-//   // ^^^^^^^
-//   //
-//   // Here we will set the current state of the plan using
-//   // moveit::core::RobotState
-//   auto start_state = *(moveit_cpp_ptr->getCurrentState());
-//   geometry_msgs::msg::Pose start_pose;
-//   start_pose.orientation.w = 1.0;
-//   start_pose.position.x = 0.55;
-//   start_pose.position.y = 0.0;
-//   start_pose.position.z = 0.6;
-
-//   start_state.setFromIK(joint_model_group_ptr, start_pose);
-
-//   planning_components->setStartState(start_state);
-
-//   // We will reuse the old goal that we had and plan to it.
-//   auto plan_solution2 = planning_components->plan();
-//   // if (plan_solution2)
-//   // {
-//   //   moveit::core::RobotState robot_state(robot_model_ptr);
-//   //   moveit::core::robotStateMsgToRobotState(plan_solution2.start_state, robot_state);
-
-//   //   visual_tools.publishAxisLabeled(robot_state.getGlobalLinkTransform(EE_LINK), "start_pose");
-//   //   visual_tools.publishAxisLabeled(target_pose1.pose, "target_pose");
-//   //   visual_tools.publishText(text_pose, "moveit::core::RobotState_Start_State", rvt::WHITE, rvt::XLARGE);
-//   //   visual_tools.publishTrajectoryLine(plan_solution2.trajectory, joint_model_group_ptr);
-//   //   visual_tools.trigger();
-
-//   //   /* Uncomment if you want to execute the plan */
-//   //   /* bool blocking = true; */
-//   //   /* moveit_cpp_ptr->execute(plan_solution2.trajectory, blocking, CONTROLLERS); */
-//   // }
-
-//   // Plan #2 visualization:
-//   //
-//   // .. image:: images/moveitcpp_plan2.png
-//   //    :width: 250pt
-//   //    :align: center
-//   //
-//   // Start the next plan
-//   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
-//   // visual_tools.deleteAllMarkers();
-//   // visual_tools.trigger();
-
-//   // Plan #3
-//   // ^^^^^^^
-//   //
-//   // We can also set the goal of the plan using
-//   // moveit::core::RobotState
-//   auto target_state = *robot_start_state;
-//   geometry_msgs::msg::Pose target_pose2;
-//   target_pose2.orientation.w = 1.0;
-//   target_pose2.position.x = 0.55;
-//   target_pose2.position.y = -0.05;
-//   target_pose2.position.z = 0.8;
-
-//   target_state.setFromIK(joint_model_group_ptr, target_pose2);
-
-//   planning_components->setGoal(target_state);
-
-//   // We will reuse the old start that we had and plan from it.
-//   auto plan_solution3 = planning_components->plan();
-//   // if (plan_solution3)
-//   // {
-//   //   moveit::core::RobotState robot_state(robot_model_ptr);
-//   //   moveit::core::robotStateMsgToRobotState(plan_solution3.start_state, robot_state);
-
-//   //   visual_tools.publishAxisLabeled(robot_state.getGlobalLinkTransform(EE_LINK), "start_pose");
-//   //   visual_tools.publishAxisLabeled(target_pose2, "target_pose");
-//   //   visual_tools.publishText(text_pose, "moveit::core::RobotState_Goal_Pose", rvt::WHITE, rvt::XLARGE);
-//   //   visual_tools.publishTrajectoryLine(plan_solution3.trajectory, joint_model_group_ptr);
-//   //   visual_tools.trigger();
-
-//   //   /* Uncomment if you want to execute the plan */
-//   //   /* bool blocking = true; */
-//   //   /* moveit_cpp_ptr->execute(plan_solution3.trajectory, blocking, CONTROLLERS); */
-//   // }
-
-//   // Plan #3 visualization:
-//   //
-//   // .. image:: images/moveitcpp_plan3.png
-//   //    :width: 250pt
-//   //    :align: center
-//   //
-//   // Start the next plan
-//   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
-//   // visual_tools.deleteAllMarkers();
-//   // visual_tools.trigger();
-
-//   // Plan #4
-//   // ^^^^^^^
-//   //
-//   // We can set the start state of the plan to the current state of the robot
-//   // We can set the goal of the plan using the name of a group states
-//   // for panda robot we have one named robot state for "panda_arm" planning group called "ready"
-//   // see `panda_arm.xacro
-//   // <https://github.com/moveit/moveit_resources/blob/ros2/panda_moveit_config/config/panda_arm.xacro#L13>`_
-
-//   /* // Set the start state of the plan from a named robot state */
-//   /* planning_components->setStartState("ready"); // Not implemented yet */
-//   // Set the goal state of the plan from a named robot state
-//   planning_components->setGoal("home");
-
-//   // Again we will reuse the old start that we had and plan from it.
-//   auto plan_solution4 = planning_components->plan();
-//   // if (plan_solution4)
-//   // {
-//   //   moveit::core::RobotState robot_state(robot_model_ptr);
-//   //   moveit::core::robotStateMsgToRobotState(plan_solution4.start_state, robot_state);
-
-//   //   visual_tools.publishAxisLabeled(robot_state.getGlobalLinkTransform(EE_LINK), "start_pose");
-//   //   visual_tools.publishAxisLabeled(robot_start_state->getGlobalLinkTransform(EE_LINK), "target_pose");
-//   //   visual_tools.publishText(text_pose, "Goal_Pose_From_Named_State", rvt::WHITE, rvt::XLARGE);
-//   //   visual_tools.publishTrajectoryLine(plan_solution4.trajectory, joint_model_group_ptr);
-//   //   visual_tools.trigger();
-
-//   //   /* Uncomment if you want to execute the plan */
-//   //   /* bool blocking = true; */
-//   //   /* moveit_cpp_ptr->execute(plan_solution4.trajectory, blocking, CONTROLLERS); */
-//   // }
-
-//   // Plan #4 visualization:
-//   //
-//   // .. image:: images/moveitcpp_plan4.png
-//   //    :width: 250pt
-//   //    :align: center
-//   //
-//   // Start the next plan
-//   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
-//   // visual_tools.deleteAllMarkers();
-//   // visual_tools.trigger();
-
-//   // Plan #5
-//   // ^^^^^^^
-//   //
-//   // We can also generate motion plans around objects in the collision scene.
-//   //
-//   // First we create the collision object
-//   moveit_msgs::msg::CollisionObject collision_object;
-//   collision_object.header.frame_id = BASE_LINK;
-//   collision_object.id = "box";
-
-//   shape_msgs::msg::SolidPrimitive box;
-//   box.type = box.BOX;
-//   box.dimensions = { 0.1, 0.4, 0.1 };
-
-//   geometry_msgs::msg::Pose box_pose;
-//   box_pose.position.x = 0.4;
-//   box_pose.position.y = 0.0;
-//   box_pose.position.z = 1.0;
-
-//   collision_object.primitives.push_back(box);
-//   collision_object.primitive_poses.push_back(box_pose);
-//   collision_object.operation = collision_object.ADD;
-
-//   // Add object to planning scene
-//   {  // Lock PlanningScene
-//     planning_scene_monitor::LockedPlanningSceneRW scene(moveit_cpp_ptr->getPlanningSceneMonitorNonConst());
-//     scene->processCollisionObjectMsg(collision_object);
-//   }  // Unlock PlanningScene
-//   planning_components->setStartStateToCurrentState();
-//   planning_components->setGoal("home");
-
-//   auto plan_solution5 = planning_components->plan();
-//   // if (plan_solution5)
-//   // {
-//   //   visual_tools.publishText(text_pose, "Planning_Around_Collision_Object", rvt::WHITE, rvt::XLARGE);
-//   //   visual_tools.publishTrajectoryLine(plan_solution5.trajectory, joint_model_group_ptr);
-//   //   visual_tools.trigger();
-
-//   //   /* Uncomment if you want to execute the plan */
-//   //   /* bool blocking = true; */
-//   //   /* moveit_cpp_ptr->execute(plan_solution5.trajectory, blocking, CONTROLLERS); */
-//   // }
-
-//   // Plan #5 visualization:
-//   //
-//   // .. image:: images/moveitcpp_plan5.png
-//   //    :width: 250pt
-//   //    :align: center
-//   //
-//   // END_TUTORIAL
-//   // visual_tools.prompt("Press 'next' to end the demo");
-//   // visual_tools.deleteAllMarkers();
-//   // visual_tools.trigger();
-
-//   RCLCPP_INFO(LOGGER, "Shutting down.");
-//   rclcpp::shutdown();
-//   return 0;
-// }

@@ -11,15 +11,29 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(moveit_ros_planning_interface)
+find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
+find_package(moveit_core REQUIRED)
+find_package(moveit_ros_planning REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(rclcpp_components REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(icdt_interfaces REQUIRED)
 
 # Include Cpp "include" directory
 include_directories(include)
 
 # Create Cpp executable
 add_executable(robot_motion_planning src/robot_motion_planning.cpp)
-ament_target_dependencies(robot_motion_planning rclcpp moveit_ros_planning_interface)
+ament_target_dependencies(robot_motion_planning rclcpp moveit_ros_planning_interface icdt_interfaces)
 
 # Install Cpp executables
 install(TARGETS
@@ -57,4 +71,5 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+ament_export_dependencies(rosidl_default_runtime)
 ament_package()
