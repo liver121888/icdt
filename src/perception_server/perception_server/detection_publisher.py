@@ -14,7 +14,6 @@ import time
 import json
 from std_msgs.msg import String
 from . import owlv2
-from icdt_interfaces.srv import ObjectDetection
 
 
 def map_bbox_to_original(bbox_resized, scale):
@@ -119,20 +118,23 @@ class DetectionService(Node):
         # ROS Setup
         self.rgb_topic = "/camera/color/image_rect_raw"
         self.depth_topic = "/camera/aligned_depth_to_color/image_raw"
-        self.detection_viz_topic = "/camera/color/detections"
+        self.detection_topic = "/camera/color/detections"
+        self.marker_array_topic = "/detections_marker_array"
         self.rgb_sub = self.create_subscription(
             ImageMsg, self.rgb_topic, self.rgb_callback, 10
         )
         self.depth_sub = self.create_subscription(
             ImageMsg, self.depth_topic, self.depth_callback, 10
         )
-        self.detection_pub = self.create_publisher(ImageMsg, self.detection_viz_topic, 10)
+        self.detection_pub = self.create_publisher(ImageMsg, self.detection_topic, 10)
+        self.marker_array_pub = self.create_publisher(
+            MarkerArray, self.marker_array_topic, 10
+        )
         self.bridge = CvBridge()
         self.last_depth_image = None
-        self.last_rgb_image = None
 
-        # Service Setup
-        self.srv = self.create_service(ObjectDetection, 'detect_objects', self.detect_objects_callback)
+        # Debug Flags
+        self.published_detections = False
 
         # OwlV2 Setup
         self.detection_model = owlv2.ObjectDetectionModel()
@@ -140,55 +142,6 @@ class DetectionService(Node):
         self.logger = self.get_logger()
         self.logger.info("Detection Service initialized")
 
-    def rgb_callback(self, msg):
-        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        self.last_rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-
-    def depth_callback(self, msg):
-        depth_image = self.bridge.imgmsg_to_cv2(msg, "16UC1") / 1000.0
-        self.last_depth_image = depth_image
-
-    def detect_objects_callback(self, request, response):
-        if self.last_rgb_image is None or self.last_depth_image is None:
-            response.detections = "[]"
-            return response
-
-        # Convert to PIL Image
-        pil_image = Image.fromarray(self.last_rgb_image)
-
-        # Parse requested classes
-        classes = request.class_names.split()
-
-        # Preprocess image
-        inputs = self.detection_model.preprocess_image(pil_image, classes)
-
-        # Perform detection
-        outputs = self.detection_model.detect_objects(inputs)
-
-        # Postprocess results
-        unnormalized_image = self.detection_model.get_preprocessed_image(
-            inputs.pixel_values
-        )
-        boxes, scores, labels = self.detection_model.post_process_results(
-            outputs, unnormalized_image, classes
-        )
-        labels = [classes[label] for label in labels]
-
-        objects = [
-            Object(label, score, box)
-            for label, score, box in zip(labels, scores, boxes)
-        ]
-        for obj in objects:
-            obj.project_to_3d(self.last_depth_image)
-
-        # Annotate Image for Visualization
-        annotated_image = self.annotate_image(self.last_rgb_image, objects)
-        cv_msg = self.bridge.cv2_to_imgmsg(annotated_image, "rgb8")
-        self.detection_pub.publish(cv_msg)
-
-        response.detections = objects_to_json(objects)
-        return response
-    
     def annotate_image(self, image, objects):
         n = len(objects)
         for i in range(n):
@@ -213,6 +166,105 @@ class DetectionService(Node):
                 2,
             )
         return image
+
+    def rgb_callback(self, msg):
+        if self.published_detections:
+            return
+        elif self.last_depth_image is None:
+            return
+
+        self.published_detections = True
+
+        self.logger.info(f"Received image with shape: {msg.height}x{msg.width}")
+        # Convert to OpenCV Image
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+
+        # Convert to PIL Image
+        pil_image = Image.fromarray(cv_image)
+
+        # Preprocess image
+        classes = ["can", "plate", "ball", "block", "box"]
+        inputs = self.detection_model.preprocess_image(pil_image, classes)
+
+        # Perform detection
+        self.logger.info("Performing detection")
+        t0 = time.time()
+        outputs = self.detection_model.detect_objects(inputs)
+        t1 = time.time()
+        self.logger.info(f"Detection time: {t1 - t0} seconds")
+
+        # Postprocess results
+        unnormalized_image = self.detection_model.get_preprocessed_image(
+            inputs.pixel_values
+        )
+        boxes, scores, labels = self.detection_model.post_process_results(
+            outputs, unnormalized_image, classes
+        )
+        labels = [classes[label] for label in labels]
+
+        objects = [
+            Object(label, score, box)
+            for label, score, box in zip(labels, scores, boxes)
+        ]
+        for obj in objects:
+            obj.project_to_3d(self.last_depth_image)
+
+        annotated_image = self.annotate_image(cv_image, objects)
+
+        cv_msg = self.bridge.cv2_to_imgmsg(annotated_image, "rgb8")
+        self.detection_pub.publish(cv_msg)
+        self.publish_marker_array(objects)
+
+        json_msg = String()
+        json_msg.data = objects_to_json(objects)
+
+
+
+    def depth_callback(self, msg):
+        depth_image = self.bridge.imgmsg_to_cv2(msg, "16UC1") / 1000.0
+        self.last_depth_image = depth_image
+
+    def publish_marker_array(self, objects):
+        marker_array = MarkerArray()
+        current_time = self.get_clock().now().to_msg()
+
+        for idx, obj in enumerate(objects):
+            marker = Marker()
+            marker.header.stamp = current_time
+            marker.header.frame_id = "camera_color_optical_frame"
+            marker.ns = "object_markers"
+            marker.id = idx  # Unique ID for each marker
+            marker.type = Marker.SPHERE  # You can use other types, e.g., CUBE, ARROW
+            marker.action = Marker.ADD
+
+            # Set the pose of the marker
+            marker.pose.position.x = obj.center_3d[0]
+            marker.pose.position.y = obj.center_3d[1]
+            marker.pose.position.z = obj.center_3d[2]
+
+            # Optional: Orientation (if needed, here it’s identity/no rotation)
+            marker.pose.orientation.x = 0.0
+            marker.pose.orientation.y = 0.0
+            marker.pose.orientation.z = 0.0
+            marker.pose.orientation.w = 1.0
+
+            # Define scale (size of the marker in each dimension)
+            marker.scale.x = 0.1  # Adjust for appropriate size
+            marker.scale.y = 0.1
+            marker.scale.z = 0.1
+
+            # Define color (RGBA)
+            marker.color.r = 1.0  # Red color
+            marker.color.g = 0.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0  # Fully opaque
+
+            print(f"{obj.label} Marker: {obj.center_3d}")
+            marker_array.markers.append(marker)
+
+        # Publish the marker array
+        self.marker_array_pub.publish(marker_array)
 
 
 def main(args=None):
