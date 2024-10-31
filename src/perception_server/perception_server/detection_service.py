@@ -149,6 +149,8 @@ class DetectionService(Node):
         self.last_depth_image = depth_image
 
     def detect_objects_callback(self, request, response):
+        t0 = time.time()
+        self.logger.info(f"Received request")
         if self.last_rgb_image is None or self.last_depth_image is None:
             response.detections = "[]"
             return response
@@ -187,6 +189,7 @@ class DetectionService(Node):
         self.detection_pub.publish(cv_msg)
 
         response.detections = objects_to_json(objects)
+        self.logger.info(f"Detection Service Completed in {time.time() - t0:.2f} seconds")
         return response
     
     def annotate_image(self, image, objects):

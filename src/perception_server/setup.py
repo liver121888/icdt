@@ -23,7 +23,8 @@ setup(
             'hello_world = perception_server.hello_world:main',
             'detection_publisher = perception_server.detection_publisher:main',
             'detection_service = perception_server.detection_service:main',
-            'detection_client = perception_server.detection_client:main'
+            'detection_simple_client = perception_server.detection_simple_client:main',
+            'detection_interactive_client = perception_server.detection_interactive_client:main'
         ],
     },
 )
