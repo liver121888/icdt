@@ -73,10 +73,8 @@ RUN apt install -y ros-humble-librealsense2* ros-humble-realsense2-camera
 # Install torch
 RUN pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 torchaudio==2.3.1+cu121 --index-url https://download.pytorch.org/whl/cu121
 
-# Install Segment Anything
-RUN mkdir -p src
-COPY src/segment-anything-2/ /ros_ws/src/segment-anything-2/
-RUN cd /ros_ws/src/segment-anything-2 && pip install -e ".[demo]"
+# Install Transformers for OwlViT
+RUN pip install -q git+https://github.com/huggingface/transformers.git
 
 # Install Remaining Dependencies
 RUN pip install open3d==0.18.0
