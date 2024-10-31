@@ -34,7 +34,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/planning_scene/planning_scene.h>
-#include <moveit/global_planner/moveit_planning_pipeline.h>
 #include <moveit/robot_state/conversions.h>
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/moveit_cpp/moveit_cpp.h>
@@ -44,7 +43,9 @@
 class MoveItPlanningNode : public rclcpp::Node
 {
 public:
-  MoveItPlanningNode() : Node("moveit_planning_node") {}
+  MoveItPlanningNode() : Node("robot_motion_planning")
+  {
+  }
 
   std::shared_ptr<MoveItPlanningNode> shared_from_this()
   {
@@ -67,6 +68,7 @@ public:
     // Declare planning group parameters
     {
       this->declare_parameter<std::string>("planning_group", UNDEFINED);
+    }
 
     // Declare planning pipeline parameters
     {
@@ -128,7 +130,7 @@ public:
       this->declare_parameter<std::string>("pilz_industrial_motion_planner.capabilities", UNDEFINED);
       this->declare_parameter<std::string>("pilz_industrial_motion_planner.default_planner_config", UNDEFINED);
       this->declare_parameter<std::vector<std::string>>("pilz_industrial_motion_planner.planning_plugins",
-                                                    std::vector<std::string>({ UNDEFINED }));
+                                                        std::vector<std::string>({ UNDEFINED }));
       this->declare_parameter<std::string>("pilz_industrial_motion_planner.planning_plugin", UNDEFINED);
       this->declare_parameter<std::string>("pilz_industrial_motion_planner.request_adapters", UNDEFINED);
       this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_vel", 1.0);
@@ -139,11 +141,12 @@ public:
 
     // For IK calculation
     {
-      this->declare_parameter<std::string>("robot_description_kinematics.arm.kinematics_solver", "pick_ik/PickIkPlugin");
+      this->declare_parameter<std::string>("robot_description_kinematics.arm.kinematics_solver", "pick_ik/"
+                                                                                                 "PickIkPlugin");
       this->declare_parameter<double>("robot_description_kinematics.arm.kinematics_solver_timeout", 0.05);
       this->declare_parameter<int>("robot_description_kinematics.arm.kinematics_solver_attempts", 3);
       this->declare_parameter<std::string>("robot_description_kinematics.arm.mode", "global");
-      this->declare_parameter<double>("robot_description_kinematics.arm.position_scale", 1.0); 
+      this->declare_parameter<double>("robot_description_kinematics.arm.position_scale", 1.0);
       this->declare_parameter<double>("robot_description_kinematics.arm.rotation_scale", 0.5);
       this->declare_parameter<double>("robot_description_kinematics.arm.position_threshold", 0.001);
       this->declare_parameter<double>("robot_description_kinematics.arm.orientation_threshold", 0.01);
@@ -169,21 +172,26 @@ public:
 
     using std::placeholders::_1;
     using std::placeholders::_2;
-    MotionPlanningService = this->create_service<icdt_interfaces::srv::MotionPlanning>("motion_planning", std::bind(&MoveItPlanningNode::plan, this, _1, _2));
+    MotionPlanningService = this->create_service<icdt_interfaces::srv::MotionPlanning>(
+        "motion_planning", std::bind(&MoveItPlanningNode::planMotion, this, _1, _2));
 
     // Initialize MoveItCpp API
     moveit_cpp::MoveItCpp::Options moveit_cpp_options(this->shared_from_this());
     moveit_cpp_ = std::make_shared<moveit_cpp::MoveItCpp>(this->shared_from_this(), moveit_cpp_options);
+
+
+    planning_group_ = this->get_parameter("planning_group").as_string();
+    
+    robot_model_ = moveit_cpp_->getRobotModel();
+    goal_state_ = std::make_shared<moveit::core::RobotState>(robot_model_);
+    joint_model_group_ = std::shared_ptr<const moveit::core::JointModelGroup>(goal_state_->getJointModelGroup(planning_group_));
+    planning_component_ = std::make_shared<moveit_cpp::PlanningComponent>(planning_group_, moveit_cpp_);
+
   }
 
-  void plan(const std::shared_ptr<icdt_interfaces::srv::MotionPlanning::Request> request,
+  void planMotion(const std::shared_ptr<icdt_interfaces::srv::MotionPlanning::Request> request,
             std::shared_ptr<icdt_interfaces::srv::MotionPlanning::Response> response)
   {
-    // response->sum = request->a + request->b + request->c;
-    // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Incoming request\na: %ld" " b: %ld" " c: %ld",
-    //               request->a, request->b, request->c);
-    // RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending back response: [%ld]", (long int)response->sum);
-
 
     // Set parameters required by the planning component
     moveit_cpp::PlanningComponent::PlanRequestParameters plan_params;
@@ -198,40 +206,51 @@ public:
 
     // update planning scene with current state
     moveit_cpp_->getPlanningSceneMonitor()->updateSceneWithCurrentState();
-    auto group_name = this->get_parameter("planning_group").as_string();
-
-    // Create planning component
-    auto planning_components = std::make_shared<moveit_cpp::PlanningComponent>(group_name, moveit_cpp_);
 
     // Set start state to current state
-    planning_components->setStartStateToCurrentState();
+    planning_component_->setStartStateToCurrentState();
 
     // Copy goal constraint into planning component
     auto goalPose = request->goal;
-    auto robot_model = moveit_cpp_->getRobotModel();
-    auto goal_state = std::make_shared<moveit::core::RobotState>(robot_model);
 
-    auto joint_model_group = std::shared_ptr<const moveit::core::JointModelGroup>(
-        goal_state->getJointModelGroup(group_name));
+    RCLCPP_INFO(LOGGER, "Goal Pose Position: x: %f, y: %f, z: %f", goalPose.pose.position.x, goalPose.pose.position.y,
+                goalPose.pose.position.z);
 
-    bool success = goal_state->setFromIK(joint_model_group.get(), goalPose.pose);
-    RCLCPP_WARN(LOGGER, "IK success: %d", success);
-    std::vector<double> joint_values;
-    goal_state->copyJointGroupPositions(joint_model_group.get(), joint_values);
-    for (size_t i = 0; i < joint_values.size(); ++i)
+    RCLCPP_INFO(LOGGER, "Goal Pose Orientation: x: %f, y: %f, z: %f, w: %f", goalPose.pose.orientation.x,
+                goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w);
+
+    bool ik_success = goal_state_->setFromIK(joint_model_group_.get(), goalPose.pose);
+
+    RCLCPP_INFO(LOGGER, "IK success: %d", ik_success);
+    
+    if (!ik_success)
     {
-      RCLCPP_WARN(LOGGER, "Joint %ld: %f", i+1, joint_values[i]);
+      response->success = false;
+      return;
     }
 
-    moveit_msgs::msg::Constraints goal_constraints =         
-        kinematic_constraints::constructGoalConstraints(*(goal_state.get()), joint_model_group.get());
+    std::vector<double> joint_values;
+    goal_state_->copyJointGroupPositions(joint_model_group_.get(), joint_values);
+    for (size_t i = 0; i < joint_values.size(); ++i)
+    {
+      RCLCPP_INFO(LOGGER, "Joint %ld: %f", i+1, joint_values[i]);
+    }
 
-    planning_components->setGoal({goal_constraints});
+    moveit_msgs::msg::Constraints goal_constraints =
+        kinematic_constraints::constructGoalConstraints(*(goal_state_.get()), joint_model_group_.get());
+
+    // if don't use IK
+    // moveit_msgs::msg::Constraints goal_constraints =
+    //     kinematic_constraints::constructGoalConstraints("link_tool", goalPose);
+
+    planning_component_->setGoal({ goal_constraints });
 
     // Plan motion
-    auto plan_solution = planning_components->plan(plan_params);
+    auto plan_solution = planning_component_->plan(plan_params);
     if (plan_solution.error_code == moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
     {
+      // isblocking or not
+      planning_component_->execute(true);
       response->success = true;
     }
     else
@@ -241,7 +260,7 @@ public:
   }
 
 private:
-  const rclcpp::Logger LOGGER = rclcpp::get_logger("global_planner_component");
+  const rclcpp::Logger LOGGER = rclcpp::get_logger("robot_motion_planning");
   std::shared_ptr<moveit_cpp::MoveItCpp> moveit_cpp_;
   const std::string PLANNING_SCENE_MONITOR_NS = "planning_scene_monitor_options.";
   const std::string PLANNING_PIPELINES_NS = "planning_pipelines.";
@@ -249,8 +268,18 @@ private:
   const std::string UNDEFINED = "<undefined>";
   rclcpp::Service<icdt_interfaces::srv::MotionPlanning>::SharedPtr MotionPlanningService;
 
-  // rclcpp::Publisher<moveit_msgs::msg::MotionPlanResponse>::SharedPtr global_trajectory_pub_;
-  
+  std::shared_ptr<const moveit::core::JointModelGroup> joint_model_group_;
+
+  // Robot model
+  std::shared_ptr<const moveit::core::RobotModel> robot_model_;
+
+  // Planning group
+  std::string planning_group_;
+
+  // Goal from IK calculation
+  std::shared_ptr<moveit::core::RobotState> goal_state_;
+  std::shared_ptr<moveit_cpp::PlanningComponent> planning_component_;
+
 };
 
 int main(int argc, char** argv)
