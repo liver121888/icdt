@@ -120,6 +120,7 @@ class DetectionService(Node):
         self.rgb_topic = "/camera/color/image_rect_raw"
         self.depth_topic = "/camera/aligned_depth_to_color/image_raw"
         self.detection_viz_topic = "/camera/color/detections"
+        self.pose_array_topic = "/camera/color/pose_array"
         self.rgb_sub = self.create_subscription(
             ImageMsg, self.rgb_topic, self.rgb_callback, 10
         )
@@ -127,6 +128,7 @@ class DetectionService(Node):
             ImageMsg, self.depth_topic, self.depth_callback, 10
         )
         self.detection_pub = self.create_publisher(ImageMsg, self.detection_viz_topic, 10)
+        self.pose_array_pub = self.create_publisher(PoseArray, self.pose_array_topic, 10)
         self.bridge = CvBridge()
         self.last_depth_image = None
         self.last_rgb_image = None
@@ -216,6 +218,31 @@ class DetectionService(Node):
                 2,
             )
         return image
+
+    def publish_pose_array(self, objects):
+        pose_array = PoseArray()
+        pose_array.header.stamp = self.get_clock().now().to_msg()
+        pose_array.header.frame_id = "camera_color_optical_frame"
+
+        for obj in objects:
+            pose = Pose()
+            
+            # Set the position of the pose
+            pose.position.x = obj.center_3d[0]
+            pose.position.y = obj.center_3d[1]
+            pose.position.z = obj.center_3d[2]
+
+            # Optional: Set orientation (if needed, here it’s identity/no rotation)
+            pose.orientation.x = 0.0
+            pose.orientation.y = 1.0
+            pose.orientation.z = 0.0
+            pose.orientation.w = 0.0
+
+            print(f"{obj.label} Pose: {obj.center_3d}")
+            pose_array.poses.append(pose)
+
+        # Publish the pose array
+        self.pose_array_pub.publish(pose_array)
 
 
 def main(args=None):
