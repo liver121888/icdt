@@ -47,7 +47,7 @@ class Wrapper(Node):
         goal_pose = PoseStamped()
         goal_pose.header.frame_id = "link_0"
         goal_pose.pose.position.x = -0.4
-        goal_pose.pose.position.y = 0.25
+        goal_pose.pose.position.y = 0.0
         goal_pose.pose.position.z = 0.36
         goal_pose.pose.orientation.x = 0.0
         goal_pose.pose.orientation.y = 1.0

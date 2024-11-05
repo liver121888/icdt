@@ -47,6 +47,8 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/wrapper.py
+  scripts/robot_interface.py
+  scripts/llm_interface.py
   scripts/publisher_member_function.py
   scripts/subscriber_member_function.py
   DESTINATION lib/${PROJECT_NAME}

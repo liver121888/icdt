@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /PoseArray1
       Splitter Ratio: 0.5
-    Tree Height: 170
+    Tree Height: 140
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -66,64 +66,6 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
-          link_0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_2:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_3:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_4:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_5:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_7:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_drillbit:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_ee:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_tool:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          world:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
         Loop Animation: true
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
@@ -170,64 +112,6 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
-          link_0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_2:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_3:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_4:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_5:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_7:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_drillbit:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_ee:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          link_tool:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          world:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
         Robot Alpha: 1
         Show Robot Collision: false
         Show Robot Visual: true
@@ -272,6 +156,16 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        D435_color_frame:
+          Value: true
+        D435_color_optical_frame:
+          Value: true
+        D435_depth_frame:
+          Value: true
+        D435_depth_optical_frame:
+          Value: true
+        D435_link:
+          Value: true
         camera_color_frame:
           Value: false
         camera_color_optical_frame:
@@ -317,6 +211,13 @@ Visualization Manager:
         world:
           lbr/world:
             lbr/link_0:
+              D435_link:
+                D435_color_frame:
+                  D435_color_optical_frame:
+                    {}
+                D435_depth_frame:
+                  D435_depth_optical_frame:
+                    {}
               lbr/link_1:
                 lbr/link_2:
                   lbr/link_3:
@@ -404,7 +305,21 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /camera/color/pose_array
+        Value: /surgical_drill_pose_viz
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /camera/color/detections
       Value: true
   Enabled: true
   Global Options:
@@ -424,30 +339,30 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 0.3904556334018707
+      Distance: 1.414788007736206
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.36104315519332886
-        Y: -0.1465654820203781
-        Z: 0.043319277465343475
+        X: -0.3721773326396942
+        Y: -0.005238707177340984
+        Z: 0.043366752564907074
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8349999785423279
+      Pitch: 0.7897966504096985
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.109989881515503
+      Yaw: 0.10817382484674454
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 939
+  Height: 1403
   Help:
     collapsed: false
   Hide Left Dock: false
@@ -458,9 +373,9 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000036700000349fc0200000006fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004700fffffffb0000000a0049006d0061006700650100000044000001a10000002c00fffffffb000000100044006900730070006c00610079007300000000fa000000eb000000eb00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e006701000001ec000001a1000001a100fffffffb0000000800480065006c0070000000029a0000006e0000008100fffffffb0000000a005600690065007700730000000339000000bd000000b900ffffff000004120000034900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000001000000000000042900000525fc0200000007fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb0000000a0049006d006100670065010000003b000002860000002800fffffffb0000000a0049006d00610067006501000002c7000002990000002800fffffffb000000100044006900730070006c00610079007300000002dd000000c7000000c700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670000000358000002080000016900fffffffb0000000800480065006c0070000000029a0000006e0000006e00fffffffb0000000a005600690065007700730000000339000000bd000000a000ffffff000005d10000052500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
-  Width: 1920
+  Width: 2560
   X: 0
-  Y: 34
+  Y: 0

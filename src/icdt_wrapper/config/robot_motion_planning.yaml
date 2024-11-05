@@ -24,8 +24,8 @@
       planning_pipeline: ompl
       # planner_id: "LIN"
       # planning_pipeline: pilz_industrial_motion_planner
-      planning_attempts: 3
-      planning_time: 0.5
+      planning_attempts: 10
+      planning_time: 10.0
       max_velocity_scaling_factor: 1.0
       max_acceleration_scaling_factor: 1.0
 
