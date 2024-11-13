@@ -88,7 +88,7 @@ RUN pip install numpy==1.24.2
 # RUN rosdep init
 RUN rosdep update
 
-RUN pip install serial
+# For Arduino
 RUN pip install pyserial
 
 # Source ROS 2 setup file
