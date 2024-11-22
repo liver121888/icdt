@@ -1,33 +1,29 @@
 /**:
   ros__parameters:
+    prefix: "franka"
+    # robot_description: "robot_description"
+    planning_group: "fr3_manipulator"
+    hand_planning_group: "hand"
 
     # The rest of these parameters are typical for moveit_cpp
     planning_scene_monitor_options:
       name: "planning_scene_monitor"
       robot_description: "robot_description"
-      joint_state_topic: "/lbr/joint_states"
-      # attached_collision_object_topic: "/moveit_cpp/planning_scene_monitor"
-      attached_collision_object_topic: "/lbr/attached_collision_object"
-
-      # Subscribe to this topic (The name comes from the perspective of moveit_cpp)
-      publish_planning_scene_topic: "/lbr/planning_scene"
-      # Publish this topic, e.g. to visualize with RViz
-      # monitored_planning_scene_topic: "/global_planner/planning_scene"
-      monitored_planning_scene_topic: "/lbr/monitored_planning_scene"
-
+      joint_state_topic: "joint_states"
+      attached_collision_object_topic: "attached_collision_object"
+      publish_planning_scene_topic: "planning_scene"
+      monitored_planning_scene_topic: "monitored_planning_scene"
       wait_for_initial_state_timeout: 10.0
-      
-    planning_group: "arm"
 
     plan_request_params:
-      planner_id: "RRTstarkConfigDefault"
-      planning_pipeline: ompl
-      # planner_id: "LIN"
-      # planning_pipeline: pilz_industrial_motion_planner
-      planning_attempts: 10
+      planner_id: "LIN"
+      planning_pipeline: pilz_industrial_motion_planner
+      planning_attempts: 5
       planning_time: 10.0
-      max_velocity_scaling_factor: 1.0
-      max_acceleration_scaling_factor: 1.0
+      # 1.0 allow the planner to move the manipulator at full speed
+      # which might cause planning failures
+      max_velocity_scaling_factor: 0.1
+      max_acceleration_scaling_factor: 0.1
 
     planning_pipelines:
       #namespace: "moveit_cpp"  # optional, default is ~
@@ -37,11 +33,11 @@
       # - pilz_industrial_motion_planner
       # planning_plugin: ompl_interface/OMPLPlanner
       # pipeline_names: ["ompl"]
-      namespace: "lbr"
+      namespace: ""
 
     # ompl ns should be outside of planning_pipelines ns
     ompl:
-      arm:
+      fr3_arm:
         planner_configs:
         - SBLkConfigDefault
         - ESTkConfigDefault
@@ -67,6 +63,59 @@
         - SPARSkConfigDefault
         - SPARStwokConfigDefault
         - TrajOptDefault
+      fr3_manipulator:
+        planner_configs:
+        - SBLkConfigDefault
+        - ESTkConfigDefault
+        - LBKPIECEkConfigDefault
+        - BKPIECEkConfigDefault
+        - KPIECEkConfigDefault
+        - RRTkConfigDefault
+        - RRTConnectkConfigDefault
+        - RRTstarkConfigDefault
+        - TRRTkConfigDefault
+        - PRMkConfigDefault
+        - PRMstarkConfigDefault
+        - FMTkConfigDefault
+        - BFMTkConfigDefault
+        - PDSTkConfigDefault
+        - STRIDEkConfigDefault
+        - BiTRRTkConfigDefault
+        - LBTRRTkConfigDefault
+        - BiESTkConfigDefault
+        - ProjESTkConfigDefault
+        - LazyPRMkConfigDefault
+        - LazyPRMstarkConfigDefault
+        - SPARSkConfigDefault
+        - SPARStwokConfigDefault
+        - TrajOptDefault
+      hand:
+        planner_configs:
+        - SBLkConfigDefault
+        - ESTkConfigDefault
+        - LBKPIECEkConfigDefault
+        - BKPIECEkConfigDefault
+        - KPIECEkConfigDefault
+        - RRTkConfigDefault
+        - RRTConnectkConfigDefault
+        - RRTstarkConfigDefault
+        - TRRTkConfigDefault
+        - PRMkConfigDefault
+        - PRMstarkConfigDefault
+        - FMTkConfigDefault
+        - BFMTkConfigDefault
+        - PDSTkConfigDefault
+        - STRIDEkConfigDefault
+        - BiTRRTkConfigDefault
+        - LBTRRTkConfigDefault
+        - BiESTkConfigDefault
+        - ProjESTkConfigDefault
+        - LazyPRMkConfigDefault
+        - LazyPRMstarkConfigDefault
+        - SPARSkConfigDefault
+        - SPARStwokConfigDefault
+        - TrajOptDefault
+
       planner_configs:
         BFMTkConfigDefault:
           balanced: 0
@@ -149,7 +198,7 @@
           type: geometric::RRT
         RRTstarkConfigDefault:
           delay_collision_checking: 1
-          goal_bias: 0.05
+          goal_bias: 0.1
           range: 0.0
           type: geometric::RRTstar
         SBLkConfigDefault:
@@ -197,19 +246,19 @@
       - ompl_interface/OMPLPlanner
       # can be either a vector of strings or a single string
       request_adapters: >-
-        default_planner_request_adapters/AddTimeOptimalParameterization
         default_planner_request_adapters/ResolveConstraintFrames 
         default_planner_request_adapters/FixWorkspaceBounds
         default_planner_request_adapters/FixStartStateBounds 
-      # default_planner_request_adapters/FixStartStateCollision
-      # default_planner_request_adapters/FixStartStatePathConstraints
+        default_planner_request_adapters/FixStartStateCollision
+        default_planner_request_adapters/FixStartStatePathConstraints
+      # this value is used in fix_start_state_bounds adapter, use the default value for now
+      # start_state_max_bounds_error: 0.1
 
       # can be either a vector of strings or a single string
       response_adapters: >-
-        default_planning_response_adapters/AddTimeOptimalParameterization
         default_planning_response_adapters/ValidateSolution
         default_planning_response_adapters/DisplayMotionPath
-      start_state_max_bounds_error: 0.1
+      # default_planning_response_adapters/AddTimeOptimalParameterization
 
     pilz_industrial_motion_planner:
       capabilities: >-
@@ -225,6 +274,16 @@
         default_planner_request_adapters/FixStartStateBounds
         default_planner_request_adapters/FixStartStateCollision 
         default_planner_request_adapters/FixStartStatePathConstraints
+        default_planner_request_adapters/AddTimeOptimalParameterization
+      # this value is used in fix_start_state_bounds adapter, use the default value for now
+      # start_state_max_bounds_error: 0.1
+
+      # can be either a vector of strings or a single string
+      response_adapters: >-
+        default_planning_response_adapters/ValidateSolution
+        default_planning_response_adapters/DisplayMotionPath
+      # default_planning_response_adapters/AddTimeOptimalParameterization
+
     # part of pilz_industrial_motion_planner
     robot_description_planning:
       cartesian_limits:
@@ -232,197 +291,159 @@
         max_trans_acc: 2.25
         max_trans_dec: -5.0
         max_trans_vel: 1.0
+      joint_limits:
+        fr3_finger_joint1:
+          has_acceleration_limits: false
+          has_jerk_limits: false
+          has_velocity_limits: false
+        fr3_finger_joint2:
+          has_acceleration_limits: false
+          has_jerk_limits: false
+          has_velocity_limits: false
+        fr3_joint1:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: 2.7437
+          min_position: -2.7437
+          max_velocity: 2.62
+          max_effort: 87.0
+        fr3_joint2:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: 1.7837
+          min_position: -1.7837
+          max_velocity: 2.62
+          max_effort: 87.0
+        fr3_joint3:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: 2.9007
+          min_position: -2.9007
+          max_velocity: 2.62
+          max_effort: 87.0
+        fr3_joint4:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: -0.1518
+          min_position: -3.0421
+          max_velocity: 2.62
+          max_effort: 87.0
+        fr3_joint5:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: 2.8065
+          min_position: -2.8065
+          max_velocity: 5.26
+          max_effort: 12.0
+        fr3_joint6:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: 4.5169
+          min_position: 0.5445
+          max_velocity: 4.18
+          max_effort: 12.0
+        fr3_joint7:
+          angle_wraparound: false
+          has_acceleration_limits: false
+          has_deceleration_limits: false
+          has_position_limits: true
+          has_jerk_limits: false
+          has_velocity_limits: true
+          has_effort_limits: true
+          has_soft_limits: false
+          max_position: 3.0159
+          min_position: -3.0159
+          max_velocity: 5.26
+          max_effort: 12.0
 
     moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
     moveit_manage_controllers: true
     moveit_simple_controller_manager:
       controller_names:
-      - joint_trajectory_controller
-      joint_trajectory_controller:
+      - fr3_arm_controller
+      - fr3_gripper
+      fr3_arm_controller:
         action_ns: follow_joint_trajectory
         default: true
         joints:
-        - A1
-        - A2
-        - A3
-        - A4
-        - A5
-        - A6
-        - A7
+        - fr3_joint1
+        - fr3_joint2
+        - fr3_joint3
+        - fr3_joint4
+        - fr3_joint5
+        - fr3_joint6
+        - fr3_joint7
         type: FollowJointTrajectory
-
-    # move_group params, can be deleted
-    # publish_geometry_updates: true
-    # publish_planning_scene: true
-    # capabilities: ''
-    # disable_capabilities: ''
-    # publish_robot_description: false
-    # publish_robot_description_semantic: true
-    # publish_state_updates: true
-    # allow_trajectory_execution: true
-    # monitor_dynamics: false
-    # publish_transforms_updates: true
-
-    # can be deleted
-    # arm:
-    #   kinematics_solver: null
-    # default_planning_pipeline: ompl
-    # planning_plugin: ompl_interface/OMPLPlanner
+      fr3_gripper:
+        action_ns: gripper_action
+        default: true
+        joints:
+        - fr3_finger_joint1
+        - fr3_finger_joint2
+        type: GripperCommand
 
     robot_description_kinematics:
-      arm:
-        kinematics_solver: pick_ik/PickIkPlugin
-        kinematics_solver_timeout: 0.05
-        kinematics_solver_attempts: 3
-        mode: global
-        position_scale: 1.0
-        rotation_scale: 0.5
-        position_threshold: 0.001
-        orientation_threshold: 0.01
-        cost_threshold: 0.001
-        minimal_displacement_weight: 0.0
-        gd_step_size: 0.0001
-
-      default_acceleration_scaling_factor: 0.1
-      default_velocity_scaling_factor: 0.1
-      joint_limits:
-        A1:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 1.710422666954443
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
-        A2:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 1.710422666954443
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
-        A3:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 1.7453292519943295
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
-        A4:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 2.2689280275926285
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
-        A5:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 2.443460952792061
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
-        A6:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 3.141592653589793
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
-        A7:
-          angle_wraparound: false
-          has_acceleration_limits: true
-          has_deceleration_limits: false
-          has_effort_limits: false
-          # has_jerk_limits: null
-          has_position_limits: false
-          has_soft_limits: false
-          has_velocity_limits: true
-          k_position: .nan
-          k_velocity: .nan
-          max_acceleration: 10.0
-          max_effort: .nan
-          max_jerk: .nan
-          # max_position: null
-          max_velocity: 3.141592653589793
-          # min_position: null
-          min_velocity: .nan
-          soft_lower_limit: .nan
-          soft_upper_limit: .nan
+      fr3_arm:
+        # kinematics_solver: pick_ik/PickIkPlugin
+        # kinematics_solver_timeout: 0.05
+        # kinematics_solver_attempts: 3
+        # mode: local
+        # position_scale: 1.0
+        # rotation_scale: 0.5
+        # position_threshold: 0.001
+        # orientation_threshold: 0.01
+        # cost_threshold: 0.001
+        # minimal_displacement_weight: 0.0
+        # gd_step_size: 0.0001
+        kinematics_solver: lma_kinematics_plugin/LMAKinematicsPlugin
+        kinematics_solver_ik_links:
+          - fr3_link8
+        kinematics_solver_search_resolution: 0.005
+        kinematics_solver_timeout: 0.005
+      fr3_manipulator:
+        kinematics_solver: lma_kinematics_plugin/LMAKinematicsPlugin
+        kinematics_solver_ik_links:
+          - fr3_hand_tcp
+        kinematics_solver_search_resolution: 0.005
+        kinematics_solver_timeout: 0.005
+      # hand:
+      #   kinematics_solver: null
+      #   kinematics_solver_ik_links: null
+      #   kinematics_solver_search_resolution: null
+      #   kinematics_solver_timeout: null

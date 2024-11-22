@@ -28,6 +28,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     LaunchConfiguration, 
     PathJoinSubstitution, 
+    TextSubstitution,
     Command, 
     FindExecutable
 )
@@ -276,6 +277,29 @@ def generate_launch_description():
         output='screen',
     )
 
+    arg_name = DeclareLaunchArgument('name',             
+        default_value=PathJoinSubstitution([
+        FindPackageShare('franka_bringup'),  # Finds the install/share directory for your package
+        TextSubstitution(text='config/eih_cam1')  # Appends the relative path to your file
+    ]),)
+
+    handeye_publisher = Node(package='easy_handeye2', executable='handeye_publisher', name='handeye_publisher_d415', parameters=[{
+        'name': LaunchConfiguration('name'),
+    }])
+
+    camera_node = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare("paradocs_control"),
+                        "launch",
+                        "rs_launch.py",
+                    ]
+                )
+            )
+    )
+
+
     launch_description = LaunchDescription([
         DeclareLaunchArgument(
             robot_ip_parameter_name,
@@ -320,6 +344,9 @@ def generate_launch_description():
                               use_fake_hardware_parameter_name: use_fake_hardware}.items(),
             condition=IfCondition(load_gripper)
         ),
+        arg_name,
+        handeye_publisher,
+        camera_node,
     ])
 
     return launch_description
