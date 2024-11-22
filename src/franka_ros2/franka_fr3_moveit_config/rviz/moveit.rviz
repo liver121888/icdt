@@ -63,10 +63,6 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         fr3_hand:
           Alpha: 1
           Show Axes: false
@@ -174,10 +170,6 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
-          base:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
           fr3_hand:
             Alpha: 1
             Show Axes: false
@@ -287,10 +279,6 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
-          base:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
           fr3_hand:
             Alpha: 1
             Show Axes: false
@@ -364,8 +352,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base:
-          Value: true
         fr3_hand:
           Value: true
         fr3_hand_tcp:
