@@ -12,12 +12,13 @@ class Wrapper(Node):
     def __init__(self):
         super().__init__('icdt_wrapper')
 
-        self.motion_planning_cli = self.create_client(MotionPlanning, '/lbr/motion_planning')
+        self.motion_planning_cli = self.create_client(MotionPlanning, '/franka_motion_planning')
+        # self.motion_planning_cli = self.create_client(MotionPlanning, '/lbr_motion_planning')
         while not self.motion_planning_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         self.motion_planning_req = MotionPlanning.Request()
 
-        self.get_clock().sleep_for(Duration(seconds=10))
+        self.get_clock().sleep_for(Duration(seconds=2))
         self.get_logger().info('Start execution')
         self.execution()
 
@@ -45,12 +46,21 @@ class Wrapper(Node):
     def move_robot(self, target_pose):
 
         goal_pose = PoseStamped()
-        goal_pose.header.frame_id = "link_0"
-        goal_pose.pose.position.x = -0.4
+        # goal_pose.header.frame_id = "link_0"
+        # goal_pose.pose.position.x = -0.4
+        # goal_pose.pose.position.y = 0.0
+        # goal_pose.pose.position.z = 0.36
+        # goal_pose.pose.orientation.x = 0.0
+        # goal_pose.pose.orientation.y = 1.0
+        # goal_pose.pose.orientation.z = 0.0
+        # goal_pose.pose.orientation.w = 0.0
+
+        goal_pose.header.frame_id = "fr3_link0"
+        goal_pose.pose.position.x = 0.3
         goal_pose.pose.position.y = 0.0
-        goal_pose.pose.position.z = 0.36
-        goal_pose.pose.orientation.x = 0.0
-        goal_pose.pose.orientation.y = 1.0
+        goal_pose.pose.position.z = 0.45
+        goal_pose.pose.orientation.x = 1.0
+        goal_pose.pose.orientation.y = 0.0
         goal_pose.pose.orientation.z = 0.0
         goal_pose.pose.orientation.w = 0.0
 
