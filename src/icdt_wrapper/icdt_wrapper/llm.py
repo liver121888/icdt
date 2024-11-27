@@ -143,7 +143,7 @@ Your end-effector doesn't have the capability to grasp objects but you can touch
 You have access to the following data:
  - detections: a collection of detected objects in the scene with their centers/bboxes
 You have access to the following functions:
- - move_robot (target_pose)
+ - robot_interface.move_robot (target_pose)
  and standard Python libraries + functions.
 
  Having selected a specific object, you can get its pose by calling the get_pose() method.
