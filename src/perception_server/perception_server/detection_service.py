@@ -15,6 +15,9 @@ import json
 from std_msgs.msg import String
 from . import owlv2
 from icdt_interfaces.srv import ObjectDetection
+import tf2_ros
+import tf2_geometry_msgs
+from geometry_msgs.msg import PointStamped
 
 
 def map_bbox_to_original(bbox_resized, scale):
@@ -108,6 +111,28 @@ class Object:
         # Set the 3D bounding box
         self.bbox_3d = [x1_3d, y1_3d, z1, x2_3d, y2_3d, z2]
 
+    def point_to_world(self, point, transform):
+        point_3d = PointStamped()
+        point_3d.header.frame_id = "camera_color_optical_frame"
+        point_3d.point.x = point[0]
+        point_3d.point.y = point[1]
+        point_3d.point.z = point[2]
+
+        transformed_point = tf2_geometry_msgs.do_transform_point(point_3d, transform)
+        return np.array([transformed_point.point.x, transformed_point.point.y, transformed_point.point.z])
+
+    def convert_to_world(self, transform):
+        # Convert center to world frame
+        self.center_3d = self.point_to_world(self.center_3d, transform)
+
+        bbox_p1 = self.point_to_world(self.bbox_3d[:3], transform)
+        bbox_p2 = self.point_to_world(self.bbox_3d[3:], transform)
+        self.bbox_3d = np.concatenate([bbox_p1, bbox_p2])
+
+    def add_safety_margin(self, margin=0.05):
+        # Add a safety margin to the center of the object
+        self.center_3d[2] += margin
+
     def __str__(self):
         return f"Object(label={self.label}, score={self.score}, bbox={self.bbox}, center={self.center})"
 
@@ -129,6 +154,10 @@ class DetectionService(Node):
         )
         self.detection_pub = self.create_publisher(ImageMsg, self.detection_viz_topic, 10)
         self.pose_array_pub = self.create_publisher(PoseArray, self.pose_array_topic, 10)
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+
+
         self.bridge = CvBridge()
         self.last_depth_image = None
         self.last_rgb_image = None
@@ -182,8 +211,12 @@ class DetectionService(Node):
             Object(label, score, box)
             for label, score, box in zip(labels, scores, boxes)
         ]
+
+        transform = self.tf_buffer.lookup_transform("world", "camera_color_optical_frame", rclpy.time.Time())
         for obj in objects:
             obj.project_to_3d(self.last_depth_image)
+            obj.convert_to_world(transform)
+            obj.add_safety_margin()
 
         # Annotate Image for Visualization
         annotated_image = self.annotate_image(self.last_rgb_image, objects)
@@ -192,6 +225,10 @@ class DetectionService(Node):
 
         response.detections = objects_to_json(objects)
         self.logger.info(f"Detection Service Completed in {time.time() - t0:.2f} seconds")
+
+        # Publish Pose Array
+        self.publish_pose_array(objects)
+
         return response
     
     def annotate_image(self, image, objects):
@@ -222,7 +259,7 @@ class DetectionService(Node):
     def publish_pose_array(self, objects):
         pose_array = PoseArray()
         pose_array.header.stamp = self.get_clock().now().to_msg()
-        pose_array.header.frame_id = "camera_color_optical_frame"
+        pose_array.header.frame_id = "world"
 
         for obj in objects:
             pose = Pose()

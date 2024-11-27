@@ -250,9 +250,9 @@ class DetectionService(Node):
             marker.pose.orientation.w = 1.0
 
             # Define scale (size of the marker in each dimension)
-            marker.scale.x = 0.1  # Adjust for appropriate size
-            marker.scale.y = 0.1
-            marker.scale.z = 0.1
+            marker.scale.x = 0.05  # Adjust for appropriate size
+            marker.scale.y = 0.05
+            marker.scale.z = 0.05
 
             # Define color (RGBA)
             marker.color.r = 1.0  # Red color

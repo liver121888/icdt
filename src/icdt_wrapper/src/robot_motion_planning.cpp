@@ -43,8 +43,13 @@
 class MoveItPlanningNode : public rclcpp::Node
 {
 public:
-  MoveItPlanningNode() : Node("robot_motion_planning")
+
+  MoveItPlanningNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions()
+      .automatically_declare_parameters_from_overrides(true)
+      .allow_undeclared_parameters(true))
+    : Node("robot_motion_planning", options)
   {
+    RCLCPP_INFO(LOGGER, "auto declare %d", Node::get_node_options().automatically_declare_parameters_from_overrides());
   }
 
   std::shared_ptr<MoveItPlanningNode> shared_from_this()
@@ -54,121 +59,6 @@ public:
 
   void initialize()
   {
-    // Declare planning scene parameters
-    {
-      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "name", UNDEFINED);
-      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "robot_description", UNDEFINED);
-      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "joint_state_topic", UNDEFINED);
-      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "attached_collision_object_topic", UNDEFINED);
-      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "publish_planning_scene_topic", UNDEFINED);
-      this->declare_parameter<std::string>(PLANNING_SCENE_MONITOR_NS + "monitored_planning_scene_topic", UNDEFINED);
-      this->declare_parameter<double>(PLANNING_SCENE_MONITOR_NS + "wait_for_initial_state_timeout", 10.0);
-    }
-
-    // Declare planning group parameters
-    {
-      this->declare_parameter<std::string>("planning_group", UNDEFINED);
-    }
-
-    // Declare planning pipeline parameters
-    {
-      this->declare_parameter<std::vector<std::string>>(PLANNING_PIPELINES_NS + "pipeline_names",
-                                                        std::vector<std::string>({ UNDEFINED }));
-      this->declare_parameter<std::string>(PLANNING_PIPELINES_NS + "namespace", UNDEFINED);
-    }
-
-    // Declare planning pipeline OMPL parameters
-    {
-      this->declare_parameter<std::vector<std::string>>(
-          "ompl.arm.planner_configs",
-          std::vector<std::string>(
-              { "SBLkConfigDefault",         "ESTkConfigDefault",   "LBKPIECEkConfigDefault",   "BKPIECEkConfigDefault",
-                "KPIECEkConfigDefault",      "RRTkConfigDefault",   "RRTConnectkConfigDefault", "RRTstarkConfigDefault",
-                "TRRTkConfigDefault",        "PRMkConfigDefault",   "PRMstarkConfigDefault",    "FMTkConfigDefault",
-                "BFMTkConfigDefault",        "PDSTkConfigDefault",  "STRIDEkConfigDefault",     "BiTRRTkConfigDefault",
-                "LBTRRTkConfigDefault",      "BiESTkConfigDefault", "ProjESTkConfigDefault",    "LazyPRMkConfigDefault",
-                "LazyPRMstarkConfigDefault", "SPARSkConfigDefault", "SPARStwokConfigDefault",   "TrajOptDefault" }));
-
-      this->declare_parameter<std::string>("ompl.planner_configs.SBLkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.ESTkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.LBKPIECEkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.BKPIECEkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.KPIECEkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.RRTkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.RRTConnectkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.RRTstarkConfigDefault.type", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.planner_configs.TRRTkConfigDefault.type", "geometric::TRRT");
-      this->declare_parameter<std::string>("ompl.planner_configs.PRMkConfigDefault.type", "geometric::PRM");
-      this->declare_parameter<std::string>("ompl.planner_configs.PRMstarkConfigDefault.type", "geometric::PRMstar");
-      this->declare_parameter<std::string>("ompl.planner_configs.FMTkConfigDefault.type", "geometric::FMT");
-      this->declare_parameter<std::string>("ompl.planner_configs.BFMTkConfigDefault.type", "geometric::BFMT");
-      this->declare_parameter<std::string>("ompl.planner_configs.PDSTkConfigDefault.type", "geometric::PDST");
-      this->declare_parameter<std::string>("ompl.planner_configs.STRIDEkConfigDefault.type", "geometric::STRIDE");
-      this->declare_parameter<std::string>("ompl.planner_configs.BiTRRTkConfigDefault.type", "geometric::BiTRRT");
-      this->declare_parameter<std::string>("ompl.planner_configs.LBTRRTkConfigDefault.type", "geometric::LBTRRT");
-      this->declare_parameter<std::string>("ompl.planner_configs.BiESTkConfigDefault.type", "geometric::BiEST");
-      this->declare_parameter<std::string>("ompl.planner_configs.ProjESTkConfigDefault.type", "geometric::ProjEST");
-      this->declare_parameter<std::string>("ompl.planner_configs.LazyPRMkConfigDefault.type", "geometric::LazyPRM");
-      this->declare_parameter<std::string>("ompl.planner_configs.LazyPRMstarkConfigDefault.type",
-                                           "geometric::LazyPRMstar");
-      this->declare_parameter<std::string>("ompl.planner_configs.SPARSkConfigDefault.type", "geometric::SPARS");
-      this->declare_parameter<std::string>("ompl.planner_configs.SPARStwokConfigDefault.type", "geometric::SPARStwo");
-      this->declare_parameter<std::string>("ompl.planner_configs.TrajOptDefault.type", "geometric::TrajOpt");
-      this->declare_parameter<std::string>("ompl.arm.projection_evaluator", "joints(A1, A2, A3, A4, A5, A6, A7)");
-
-      this->declare_parameter<std::vector<std::string>>("ompl.planning_plugins",
-                                                        std::vector<std::string>({ UNDEFINED }));
-      this->declare_parameter<std::string>("ompl.planning_plugin", UNDEFINED);
-
-      this->declare_parameter<std::string>("ompl.request_adapters", UNDEFINED);
-      this->declare_parameter<std::string>("ompl.response_adapters", UNDEFINED);
-      this->declare_parameter<double>("ompl.start_state_max_bounds_error", 0.1);
-    }
-
-    // Declare pilz_industrial_motion_planner parameters
-    {
-      this->declare_parameter<std::string>("pilz_industrial_motion_planner.capabilities", UNDEFINED);
-      this->declare_parameter<std::string>("pilz_industrial_motion_planner.default_planner_config", UNDEFINED);
-      this->declare_parameter<std::vector<std::string>>("pilz_industrial_motion_planner.planning_plugins",
-                                                        std::vector<std::string>({ UNDEFINED }));
-      this->declare_parameter<std::string>("pilz_industrial_motion_planner.planning_plugin", UNDEFINED);
-      this->declare_parameter<std::string>("pilz_industrial_motion_planner.request_adapters", UNDEFINED);
-      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_vel", 1.0);
-      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_acc", 2.25);
-      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_trans_dec", -5.0);
-      this->declare_parameter<double>("pilz_industrial_motion_planner.cartesian_limits.max_rot_vel", 1.57);
-    }
-
-    // For IK calculation
-    {
-      this->declare_parameter<std::string>("robot_description_kinematics.arm.kinematics_solver", "pick_ik/"
-                                                                                                 "PickIkPlugin");
-      this->declare_parameter<double>("robot_description_kinematics.arm.kinematics_solver_timeout", 0.05);
-      this->declare_parameter<int>("robot_description_kinematics.arm.kinematics_solver_attempts", 3);
-      this->declare_parameter<std::string>("robot_description_kinematics.arm.mode", "global");
-      this->declare_parameter<double>("robot_description_kinematics.arm.position_scale", 1.0);
-      this->declare_parameter<double>("robot_description_kinematics.arm.rotation_scale", 0.5);
-      this->declare_parameter<double>("robot_description_kinematics.arm.position_threshold", 0.001);
-      this->declare_parameter<double>("robot_description_kinematics.arm.orientation_threshold", 0.01);
-      this->declare_parameter<double>("robot_description_kinematics.arm.cost_threshold", 0.001);
-      this->declare_parameter<double>("robot_description_kinematics.arm.minimal_displacement_weight", 0.0);
-      this->declare_parameter<double>("robot_description_kinematics.arm.gd_step_size", 0.0001);
-    }
-
-    // Declare PlanRequestParameters
-    {
-      this->declare_parameter<std::string>(PLAN_REQUEST_PARAM_NS + "planner_id", UNDEFINED);
-      this->declare_parameter<std::string>(PLAN_REQUEST_PARAM_NS + "planning_pipeline", UNDEFINED);
-      this->declare_parameter<int>(PLAN_REQUEST_PARAM_NS + "planning_attempts", 1);
-      this->declare_parameter<double>(PLAN_REQUEST_PARAM_NS + "planning_time", 1.0);
-      this->declare_parameter<double>(PLAN_REQUEST_PARAM_NS + "max_velocity_scaling_factor", 1.0);
-      this->declare_parameter<double>(PLAN_REQUEST_PARAM_NS + "max_acceleration_scaling_factor", 1.0);
-    }
-
-    // Trajectory Execution Functionality (required by the MoveItPlanningPipeline but not used within hybrid planning)
-    this->declare_parameter<std::string>("moveit_controller_manager", UNDEFINED);
-    // this->declare_parameter<bool>("allow_trajectory_execution", true);
-    // this->declare_parameter<bool>("moveit_manage_controllers", true);
 
     using std::placeholders::_1;
     using std::placeholders::_2;
