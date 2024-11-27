@@ -108,6 +108,61 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 RUN pip install ollama
 RUN pip install streamlit
 
+# Install Franka dependencies
+RUN apt-get update && apt-get install -y \
+    bc \
+    ca-certificates \
+    ros-humble-ament-cmake-clang-format \
+    libssl-dev \
+    libelf-dev \
+    libpoco-dev \
+    libeigen3-dev \
+    dpkg \
+    bison \
+    flex \
+    dwarves \
+    zstd \
+    libncurses-dev \
+    liburdfdom-headers-dev \
+    libconsole-bridge-dev \
+    libtinyxml2-dev \
+    libignition-gazebo6-dev
+
+# Add the robotpkg repository
+RUN curl -sSL http://robotpkg.openrobots.org/packages/debian/robotpkg.asc | tee /etc/apt/keyrings/robotpkg.asc > /dev/null && \
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/robotpkg.asc] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" \
+    | tee /etc/apt/sources.list.d/robotpkg.list
+
+# Install Pinocchio library from robotpkg
+RUN apt-get update && apt-get install -y robotpkg-pinocchio
+
+# Remove any existing libfranka installations to avoid conflicts
+RUN apt-get remove -y "*libfranka*"
+
+# Clone the libfranka repository and prepare the build directory
+RUN git clone --recursive https://github.com/frankaemika/libfranka.git /libfranka && \
+    cd /libfranka && \
+    git checkout 0.14.1 && \
+    git submodule update --init --recursive && \
+    mkdir build
+
+# Set working directory to the build directory
+WORKDIR /libfranka/build
+
+# Set CMAKE_PREFIX_PATH explicitly to ensure proper configuration
+ENV CMAKE_PREFIX_PATH=/opt/openrobots/lib/cmake
+
+# Configure, build, and package libfranka
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
+    cmake --build . && \
+    cpack -G DEB
+
+# Install the generated Debian package
+RUN dpkg -i libfranka*.deb
+
+# Return to ROS workspace for default container entry
+WORKDIR /ros_ws
+
 # Copy custom commands into .bashrc
 COPY docker/commands.bashrc /ros_ws/
 RUN cat /ros_ws/commands.bashrc >> ~/.bashrc
