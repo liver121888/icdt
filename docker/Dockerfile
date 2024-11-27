@@ -1,12 +1,13 @@
-#cuda verison for SAM
+# Use CUDA image as base
 FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 
 # Set environment variables for non-interactive installations
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Set working directory
 WORKDIR /ros_ws
 
-# Update the system and install essential dependencies
+# Install essential dependencies and common tools
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     lsb-release \
@@ -27,8 +28,9 @@ RUN apt-get update && apt-get install -y \
     gnome-terminal \
     tmux \
     locales \
-    && locale-gen en_US en_US.UTF-8 \
-    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+    apt-transport-https && \
+    locale-gen en_US en_US.UTF-8 && \
+    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 
 # Setup ROS 2 Humble repository and install ROS 2 Humble (Desktop Full Installation)
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - && \
@@ -49,8 +51,7 @@ RUN apt-get install -y \
     ros-humble-control-toolbox \
     ros-humble-joint-state-publisher \
     ros-humble-rviz2 \
-    ros-humble-tf-transformations \
-    ros-humble-graph-msgs
+    ros-humble-tf-transformations
 
 # Install MoveIt and Gazebo ROS 2 control
 RUN apt-get install -y \
@@ -58,7 +59,6 @@ RUN apt-get install -y \
     ros-humble-moveit-ros-planning \
     ros-humble-moveit-ros-visualization \
     ros-humble-moveit-setup-assistant \
-    ros-humble-moveit-visual-tools \
     ros-humble-gazebo-ros2-control \
     ros-humble-gazebo-ros-pkgs \
     ros-humble-pick-ik \

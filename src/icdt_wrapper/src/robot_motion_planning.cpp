@@ -49,7 +49,8 @@ public:
       .allow_undeclared_parameters(true))
     : Node("robot_motion_planning", options)
   {
-    RCLCPP_INFO(LOGGER, "auto declare %d", Node::get_node_options().automatically_declare_parameters_from_overrides());
+    RCLCPP_INFO(LOGGER, "automatically_declare_parameters_from_overrides: %d", Node::get_node_options().automatically_declare_parameters_from_overrides());
+    RCLCPP_INFO(LOGGER, "allow_undeclared_parameters: %d", Node::get_node_options().allow_undeclared_parameters());
   }
 
   std::shared_ptr<MoveItPlanningNode> shared_from_this()
@@ -62,13 +63,15 @@ public:
 
     using std::placeholders::_1;
     using std::placeholders::_2;
+
+    static const std::string prefix = this->get_parameter("prefix").as_string();
+
     MotionPlanningService = this->create_service<icdt_interfaces::srv::MotionPlanning>(
-        "motion_planning", std::bind(&MoveItPlanningNode::planMotion, this, _1, _2));
+        prefix + "_motion_planning", std::bind(&MoveItPlanningNode::planMotion, this, _1, _2));
 
     // Initialize MoveItCpp API
     moveit_cpp::MoveItCpp::Options moveit_cpp_options(this->shared_from_this());
     moveit_cpp_ = std::make_shared<moveit_cpp::MoveItCpp>(this->shared_from_this(), moveit_cpp_options);
-
 
     planning_group_ = this->get_parameter("planning_group").as_string();
     
@@ -103,11 +106,11 @@ public:
     // Copy goal constraint into planning component
     auto goalPose = request->goal;
 
-    RCLCPP_INFO(LOGGER, "Goal Pose Position: x: %f, y: %f, z: %f", goalPose.pose.position.x, goalPose.pose.position.y,
-                goalPose.pose.position.z);
+    // RCLCPP_INFO(LOGGER, "Goal Pose Position: x: %f, y: %f, z: %f", goalPose.pose.position.x, goalPose.pose.position.y,
+    //             goalPose.pose.position.z);
 
-    RCLCPP_INFO(LOGGER, "Goal Pose Orientation: x: %f, y: %f, z: %f, w: %f", goalPose.pose.orientation.x,
-                goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w);
+    // RCLCPP_INFO(LOGGER, "Goal Pose Orientation: x: %f, y: %f, z: %f, w: %f", goalPose.pose.orientation.x,
+    //             goalPose.pose.orientation.y, goalPose.pose.orientation.z, goalPose.pose.orientation.w);
 
     bool ik_success = goal_state_->setFromIK(joint_model_group_.get(), goalPose.pose);
 
@@ -152,8 +155,8 @@ public:
 private:
   const rclcpp::Logger LOGGER = rclcpp::get_logger("robot_motion_planning");
   std::shared_ptr<moveit_cpp::MoveItCpp> moveit_cpp_;
-  const std::string PLANNING_SCENE_MONITOR_NS = "planning_scene_monitor_options.";
-  const std::string PLANNING_PIPELINES_NS = "planning_pipelines.";
+  // const std::string PLANNING_SCENE_MONITOR_NS = "planning_scene_monitor_options.";
+  // const std::string PLANNING_PIPELINES_NS = "planning_pipelines.";
   const std::string PLAN_REQUEST_PARAM_NS = "plan_request_params.";
   const std::string UNDEFINED = "<undefined>";
   rclcpp::Service<icdt_interfaces::srv::MotionPlanning>::SharedPtr MotionPlanningService;
