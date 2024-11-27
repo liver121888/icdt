@@ -38,6 +38,7 @@ class DetectedObject:
 
     def get_pose(self):
         """Returns the 3D center of the detected object as a PoseStamped Msg."""
+        # lbr
         pose = PoseStamped()
         pose.header.frame_id = "link_0"
         pose.pose.position.x = self.center_3d[0]
@@ -47,6 +48,17 @@ class DetectedObject:
         pose.pose.orientation.y = 1.0
         pose.pose.orientation.z = 0.0
         pose.pose.orientation.w = 0.0
+
+        # franka
+        # pose.header.frame_id = "base"
+        # pose.pose.position.x = self.center_3d[0]
+        # pose.pose.position.y = self.center_3d[1]
+        # pose.pose.position.z = self.center_3d[2]
+        # pose.pose.orientation.x = -1.0
+        # pose.pose.orientation.y = 0.0
+        # pose.pose.orientation.z = 0.0
+        # pose.pose.orientation.w = 0.0
+
         return pose
 
     def __eq__(self, other):

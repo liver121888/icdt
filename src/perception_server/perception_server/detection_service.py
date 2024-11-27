@@ -65,7 +65,10 @@ class Object:
         self.score = score
 
         # 2D Coordinates
+        # D405
         scale = 960 / 848
+        # D415
+        # scale = 960/1280
         scaled_box = map_bbox_to_original(box, scale)
         self.bbox = list(map(int, scaled_box))  # [x1, y1, x2, y2]
         self.center = (
@@ -78,6 +81,13 @@ class Object:
         self.fy = 424.6562805175781
         self.cx = 422.978515625
         self.cy = 242.1155242919922
+
+        # D415 Intrinsics for 3D Projection
+        # self.fx=910.8426
+        # self.fy=908.3326
+        # self.cx=636.2789
+        # self.cy=358.2963
+
 
         self.intrinsics = np.array(
             [[self.fx, 0, self.cx], [0, self.fy, self.cy], [0, 0, 1]]
@@ -142,7 +152,11 @@ class DetectionService(Node):
         super().__init__("detection_service")
 
         # ROS Setup
+        # D405
         self.rgb_topic = "/camera/color/image_rect_raw"
+
+        # D415
+        # self.rgb_topic = "/camera/color/image_raw"
         self.depth_topic = "/camera/aligned_depth_to_color/image_raw"
         self.detection_viz_topic = "/camera/color/detections"
         self.pose_array_topic = "/camera/color/pose_array"
@@ -211,8 +225,12 @@ class DetectionService(Node):
             Object(label, score, box)
             for label, score, box in zip(labels, scores, boxes)
         ]
+        # lbr
+        transform = self.tf_buffer.lookup_transform("base", "camera_color_optical_frame", rclpy.time.Time())
 
-        transform = self.tf_buffer.lookup_transform("world", "camera_color_optical_frame", rclpy.time.Time())
+        # franka
+        # transform = self.tf_buffer.lookup_transform("base", "camera_color_optical_frame", rclpy.time.Time())
+        
         for obj in objects:
             obj.project_to_3d(self.last_depth_image)
             obj.convert_to_world(transform)
@@ -259,7 +277,12 @@ class DetectionService(Node):
     def publish_pose_array(self, objects):
         pose_array = PoseArray()
         pose_array.header.stamp = self.get_clock().now().to_msg()
+
+        # lbr
         pose_array.header.frame_id = "world"
+
+        # franka
+        # pose_array.header.frame_id = "base"
 
         for obj in objects:
             pose = Pose()
@@ -270,10 +293,18 @@ class DetectionService(Node):
             pose.position.z = obj.center_3d[2]
 
             # Optional: Set orientation (if needed, here it’s identity/no rotation)
+            
+            # lbr
             pose.orientation.x = 0.0
             pose.orientation.y = 1.0
             pose.orientation.z = 0.0
             pose.orientation.w = 0.0
+
+            # franka
+            # pose.orientation.x = -1.0
+            # pose.orientation.y = 0.0
+            # pose.orientation.z = 0.0
+            # pose.orientation.w = 0.0
 
             print(f"{obj.label} Pose: {obj.center_3d}")
             pose_array.poses.append(pose)
