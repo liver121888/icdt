@@ -10,7 +10,7 @@
   <!-- inertials: description of the inertials that comes from a YAML file. Example definition: ${xacro.load_yaml('$(find franka_description)/robots/fr3/inertials.yaml')} -->
   <!-- dynamics: description of the dynamics that comes from a YAML file. Example definition: ${xacro.load_yaml('$(find franka_description)/robots/fr3/dynamics.yaml')} -->
 
-  <xacro:macro name="franka_arm" params="arm_id description_pkg:='franka_description' connected_to:='base' xyz:='0 0 0' rpy:='0 0 0' gazebo:='false' safety_distance:=0 joint_limits inertials kinematics dynamics with_sc:=false" >
+  <xacro:macro name="franka_arm" params="arm_id description_pkg:='franka_description' connected_to:='world' xyz:='0 0 0' rpy:='0 0 0' gazebo:='false' safety_distance:=0 joint_limits inertials kinematics dynamics with_sc:=false" >
     <xacro:if value="${gazebo}">
       <xacro:property name="connected_to" value="" />
     </xacro:if>
