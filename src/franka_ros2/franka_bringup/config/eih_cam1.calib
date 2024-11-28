@@ -3,7 +3,7 @@ parameters:
   calibration_type: eye_in_hand
   robot_base_frame: fr3_link0
   robot_effector_frame: fr3_hand_tcp
-  tracking_base_frame: camera_link
+  tracking_base_frame: D415_link
   tracking_marker_frame: marker_1_frame
   freehand_robot_movement: true
   move_group_namespace: /
