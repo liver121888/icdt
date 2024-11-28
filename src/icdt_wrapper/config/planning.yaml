@@ -1,0 +1,77 @@
+planning_pipelines:
+  #namespace: "moveit_cpp"  # optional, default is ~
+  pipeline_names: ["ompl", "pilz_industrial_motion_planner"]
+  # planning_pipelines:
+  # - ompl
+  # - pilz_industrial_motion_planner
+  # planning_plugin: ompl_interface/OMPLPlanner
+  # pipeline_names: ["ompl"]
+  namespace: ""
+
+# ompl ns should be outside of planning_pipelines ns
+ompl:
+  fr3_arm:
+    planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+  fr3_manipulator:
+    planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+  hand:
+    planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+
+  planner_configs:
+    RRTConnectkConfigDefault:
+      range: 0.0
+      type: geometric::RRTConnect
+    RRTstarkConfigDefault:
+      delay_collision_checking: 1
+      goal_bias: 0.1
+      range: 0.0
+      type: geometric::RRTstar
+  # one is sufficient
+  planning_plugin: ompl_interface/OMPLPlanner
+  planning_plugins:
+  - ompl_interface/OMPLPlanner
+  # can be either a vector of strings or a single string
+  request_adapters: >-
+    default_planner_request_adapters/ResolveConstraintFrames 
+    default_planner_request_adapters/FixWorkspaceBounds
+    default_planner_request_adapters/FixStartStateBounds 
+    default_planner_request_adapters/FixStartStateCollision
+    default_planner_request_adapters/FixStartStatePathConstraints
+  # this value is used in fix_start_state_bounds adapter, use the default value for now
+  # start_state_max_bounds_error: 0.1
+
+  # can be either a vector of strings or a single string
+  response_adapters: >-
+    default_planning_response_adapters/ValidateSolution
+    default_planning_response_adapters/DisplayMotionPath
+  # default_planning_response_adapters/AddTimeOptimalParameterization
+
+pilz_industrial_motion_planner:
+  capabilities: >-
+    pilz_industrial_motion_planner/MoveGroupSequenceAction
+    pilz_industrial_motion_planner/MoveGroupSequenceService
+  default_planner_config: LIN
+  planning_plugin: pilz_industrial_motion_planner/CommandPlanner
+  planning_plugins:
+  - pilz_industrial_motion_planner/CommandPlanner
+  request_adapters: >-
+    default_planner_request_adapters/ResolveConstraintFrames
+    default_planner_request_adapters/FixWorkspaceBounds 
+    default_planner_request_adapters/FixStartStateBounds
+    default_planner_request_adapters/FixStartStateCollision 
+    default_planner_request_adapters/FixStartStatePathConstraints
+    default_planner_request_adapters/AddTimeOptimalParameterization
+  # this value is used in fix_start_state_bounds adapter, use the default value for now
+  # start_state_max_bounds_error: 0.1
+
+  # can be either a vector of strings or a single string
+  response_adapters: >-
+    default_planning_response_adapters/ValidateSolution
+    default_planning_response_adapters/DisplayMotionPath
+  # default_planning_response_adapters/AddTimeOptimalParameterization
