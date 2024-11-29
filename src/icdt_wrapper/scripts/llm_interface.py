@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.action import ActionClient
+
 import json
 import numpy as np
 import time
 from icdt_interfaces.srv import ObjectDetection, MotionPlanning
-
+from franka_msgs.action import Move
 from icdt_wrapper.perception_utils import *
 from icdt_wrapper.llm import LLMRouter, SYSTEM_PROMPT
 
@@ -16,12 +18,15 @@ class RobotInterfaceNode(Node):
         super().__init__('robot_interface')
         self.detection_client = DetectionClient(self)  # Initialize the detection client
         # lbr
-        self.motion_planning_cli = self.create_client(MotionPlanning, '/lbr_motion_planning')
+        # self.motion_planning_cli = self.create_client(MotionPlanning, '/lbr_motion_planning')
         # franka
-        # self.motion_planning_cli = self.create_client(MotionPlanning, '/franka_motion_planning')
+        self.motion_planning_cli = self.create_client(MotionPlanning, '/franka_motion_planning')
         while not self.motion_planning_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
-
+        
+        self.gripper_action_client = ActionClient(self, Move, '/fr3_gripper/move')
+        while not self.gripper_action_client.wait_for_server(timeout_sec=1.0):
+            self.get_logger().info('action server not available, waiting again...')
 
         # LLM Stuff
         self.llm_router = LLMRouter("gpt-4o", SYSTEM_PROMPT)
@@ -42,10 +47,7 @@ class RobotInterfaceNode(Node):
         
         # change frame to fix pilz error
         target_pose = PoseStamped()
-        # lbr
         target_pose.header.frame_id = "world"
-        # franka
-        # target_pose.header.frame_id = "base"
         target_pose.pose.position.x = goal_pose.pose.position.x
         target_pose.pose.position.y = goal_pose.pose.position.y
         target_pose.pose.position.z = goal_pose.pose.position.z
@@ -76,29 +78,57 @@ class RobotInterfaceNode(Node):
             return
 
         # lbr
-        home_pose = PoseStamped()
-        home_pose.header.frame_id = "world"
-        home_pose.pose.position.x = -0.4
-        home_pose.pose.position.y = 0.0
-        home_pose.pose.position.z = 0.36
-        home_pose.pose.orientation.x = 0.0
-        home_pose.pose.orientation.y = 1.0
-        home_pose.pose.orientation.z = 0.0
-        home_pose.pose.orientation.w = 0.0
-
-        # franka
         # home_pose = PoseStamped()
-        # home_pose.header.frame_id = "base"
-        # home_pose.pose.position.x = 0.31
+        # home_pose.header.frame_id = "world"
+        # home_pose.pose.position.x = -0.4
         # home_pose.pose.position.y = 0.0
-        # home_pose.pose.position.z = 0.485
-        # home_pose.pose.orientation.x = -1.0
-        # home_pose.pose.orientation.y = 0.0
+        # home_pose.pose.position.z = 0.36
+        # home_pose.pose.orientation.x = 0.0
+        # home_pose.pose.orientation.y = 1.0
         # home_pose.pose.orientation.z = 0.0
         # home_pose.pose.orientation.w = 0.0
 
+        # franka
+        home_pose = PoseStamped()
+        home_pose.header.frame_id = "world"
+        # home_pose.pose.position.x = 0.31
+        # offset -1.3 meter, 0.31 - 1.3 ~= -1.0
+        home_pose.pose.position.x = -1.0
+        home_pose.pose.position.y = 0.0
+        home_pose.pose.position.z = 0.485
+        home_pose.pose.orientation.x = -1.0
+        home_pose.pose.orientation.y = 0.0
+        home_pose.pose.orientation.z = 0.0
+        home_pose.pose.orientation.w = 0.0
+
         self.move_robot(home_pose)
 
+    def open_gripper(self):
+        """Open the Robot Gripper."""
+        # 0.035 on each side is open, target width is 0.07
+        self.move_gripper(target_width=0.07, speed=0.1)
+
+    def close_gripper(self):
+        """Close the Robot Gripper."""
+        self.move_gripper(target_width=0.01, speed=0.1)
+
+    def move_gripper(self, target_width, speed):
+        """Move the Robot Gripper to the target width."""
+        goal_msg = Move.Goal()
+        goal_msg.width = target_width
+        goal_msg.speed = speed
+
+        self.get_logger().info(f'Sending gripper goal: width={target_width} m, speed={speed} m/s')
+        self.gripper_action_client.send_goal_async(
+            goal_msg,
+            feedback_callback=lambda feedback_msg: self.get_logger().info(
+                f'Feedback: Current width={feedback_msg.current_width:.3f} m'
+            )
+        ).add_done_callback(
+            lambda future: self.get_logger().info(
+                'Goal accepted' if future.result().accepted else 'Goal rejected'
+            )
+        )
 
 # Main Interactive Loop
 def main(args=None):
@@ -120,7 +150,7 @@ def main(args=None):
             user_prompt += "\n[Instruction]\n"
             user_prompt += user_task
     
-            llm_output = robot_interface.llm_router(user_prompt)
+            # llm_output = robot_interface.llm_router(user_prompt)
 
             # dummy
             # dummy_code = """
@@ -134,7 +164,8 @@ def main(args=None):
             # else:
             #     print(f"{target_label} not found.")
             # """
-            # llm_output = ["Dummy Reasoning", dummy_code]
+            dummy_code = """robot_interface.move_home()"""
+            llm_output = ["Dummy Reasoning", dummy_code]
 
             reasoning, valid_code = llm_output
             print(f"Reasoning: {reasoning}")
@@ -146,9 +177,6 @@ def main(args=None):
                 time.sleep(2)
                 # robot_interface.move_home()
 
-
-
-            
     except KeyboardInterrupt:
         print("Shutting down.")
     finally:
