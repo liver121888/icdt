@@ -112,18 +112,18 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # cameras
-    arg_name = DeclareLaunchArgument('name',             
-                default_value=PathJoinSubstitution([
-                FindPackageShare('paradocs_control'),  # Finds the install/share directory for your package
-                TextSubstitution(text='config/eih_cam1')  # Appends the relative path to your file
-            ]),)
+    # arg_name = DeclareLaunchArgument('name',             
+    #             default_value=PathJoinSubstitution([
+    #             FindPackageShare('paradocs_control'),  # Finds the install/share directory for your package
+    #             TextSubstitution(text='config/eih_cam1')  # Appends the relative path to your file
+    #         ]),)
 
-    handeye_publisher = Node(package='easy_handeye2', executable='handeye_publisher', name='handeye_publisher', parameters=[{
-        'name': LaunchConfiguration('name'),
-    }])
+    # handeye_publisher = Node(package='easy_handeye2', executable='handeye_publisher', name='handeye_publisher', parameters=[{
+    #     'name': LaunchConfiguration('name'),
+    # }])
 
-    ld.add_action(arg_name)
-    ld.add_action(handeye_publisher)
+    # ld.add_action(arg_name)
+    # ld.add_action(handeye_publisher)
 
     arg_name_d415 = DeclareLaunchArgument('nameD415',             
                 default_value=PathJoinSubstitution([
@@ -137,6 +137,21 @@ def generate_launch_description() -> LaunchDescription:
 
     ld.add_action(arg_name_d415)
     ld.add_action(handeye_publisher_d415) 
+
+    ld.add_action(
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare("paradocs_control"),
+                        "launch",
+                        "rs_launch.py",
+                    ]
+                )
+            ),
+            
+        )
+    )
 
     # ld.add_action(
     #     IncludeLaunchDescription(
@@ -160,12 +175,12 @@ def generate_launch_description() -> LaunchDescription:
     #     )
     # )
 
-    detection_node = Node(
-        package="perception_server",
-        executable="detection_service",
-        name="detection_service",
-        output="screen",
-    )
-    ld.add_action(detection_node)
+    # detection_node = Node(
+    #     package="perception_server",
+    #     executable="detection_service",
+    #     name="detection_service",
+    #     output="screen",
+    # )
+    # ld.add_action(detection_node)
 
     return ld

@@ -3,18 +3,18 @@ parameters:
   calibration_type: eye_in_hand
   robot_base_frame: fr3_link0
   robot_effector_frame: fr3_hand_tcp
-  tracking_base_frame: D415_link
+  tracking_base_frame: camera_link
   tracking_marker_frame: marker_1_frame
   freehand_robot_movement: true
   move_group_namespace: /
   move_group: manipulator
 transform:
   translation:
-    x: -0.05679008
-    y: 0.0
-    z: -0.07348205
+    x: -0.060569
+    y: -0.011541
+    z: -0.059341
   rotation:
-    x: 0.0
-    y: -0.67559
-    z: 0.0
-    w: 0.737277
+    x: 0.000193
+    y: -0.628356
+    z: 0.003503
+    w: 0.777918
