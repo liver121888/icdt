@@ -3,10 +3,11 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
+from launch.substitutions import TextSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 
 from lbr_description import LBRDescriptionMixin
@@ -87,5 +88,32 @@ def generate_launch_description() -> LaunchDescription:
             ],
         )
     )
+
+
+    arg_name = DeclareLaunchArgument('name',             
+                default_value=PathJoinSubstitution([
+                FindPackageShare('paradocs_control'),  # Finds the install/share directory for your package
+                TextSubstitution(text='config/eih_cam1')  # Appends the relative path to your file
+            ]),)
+
+    handeye_publisher = Node(package='easy_handeye2', executable='handeye_publisher', name='handeye_publisher', parameters=[{
+        'name': LaunchConfiguration('name'),
+    }])
+
+    ld.add_action(arg_name)
+    ld.add_action(handeye_publisher)
+
+    arg_name_d415 = DeclareLaunchArgument('nameD415',             
+                default_value=PathJoinSubstitution([
+                FindPackageShare('franka_bringup'),  # Finds the install/share directory for your package
+                TextSubstitution(text='config/eih_cam1')  # Appends the relative path to your file
+            ]),)
+
+    handeye_publisher_d415 = Node(package='easy_handeye2', executable='handeye_publisher', name='handeye_publisher_d415', parameters=[{
+        'name': LaunchConfiguration('nameD415'),
+    }])
+
+    ld.add_action(arg_name_d415)
+    ld.add_action(handeye_publisher_d415) 
 
     return ld

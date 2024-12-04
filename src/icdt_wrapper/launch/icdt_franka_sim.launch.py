@@ -91,7 +91,7 @@ def generate_launch_description() -> LaunchDescription:
 
     arg_name = DeclareLaunchArgument('name',             
                 default_value=PathJoinSubstitution([
-                FindPackageShare('franka_brindup'),  # Finds the install/share directory for your package
+                FindPackageShare('franka_bringup'),  # Finds the install/share directory for your package
                 TextSubstitution(text='config/eih_cam1')  # Appends the relative path to your file
             ]),)
 
