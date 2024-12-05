@@ -36,31 +36,6 @@ class DetectedObject:
         self.bbox_3d = bbox_3d
         self.center_3d = center_3d
 
-    def get_pose(self):
-        """Returns the 3D center of the detected object as a PoseStamped Msg."""
-        # lbr
-        pose = PoseStamped()
-        pose.header.frame_id = "link_0"
-        pose.pose.position.x = self.center_3d[0]
-        pose.pose.position.y = self.center_3d[1]
-        pose.pose.position.z = self.center_3d[2]
-        pose.pose.orientation.x = 0.0
-        pose.pose.orientation.y = 1.0
-        pose.pose.orientation.z = 0.0
-        pose.pose.orientation.w = 0.0
-
-        # franka
-        # pose.header.frame_id = "base"
-        # pose.pose.position.x = self.center_3d[0]
-        # pose.pose.position.y = self.center_3d[1]
-        # pose.pose.position.z = self.center_3d[2]
-        # pose.pose.orientation.x = -1.0
-        # pose.pose.orientation.y = 0.0
-        # pose.pose.orientation.z = 0.0
-        # pose.pose.orientation.w = 0.0
-
-        return pose
-
     def __eq__(self, other):
         """Override equality to allow detection search by label in DetectedObjectsCollection."""
         return isinstance(other, DetectedObject) and self.label == other.label
@@ -71,6 +46,20 @@ class DetectedObjectsCollection:
     """Collection class to manage and search detected objects."""
     def __init__(self, objects):
         self.objects = objects
+        self._index = 0
+
+    def __iter__(self):
+        """Make the collection iterable."""
+        self._index = 0
+        return self
+
+    def __next__(self):
+        """Enable iteration with next()."""
+        if self._index < len(self.objects):
+            result = self.objects[self._index]
+            self._index += 1
+            return result
+        raise StopIteration
 
     def __contains__(self, label):
         """Enable 'if object in detections' syntax."""
@@ -103,7 +92,7 @@ class DetectionClient:
             node.get_logger().info('Waiting for service detect_objects to be available...')
         self.request = ObjectDetection.Request()
         self.node = node
-        self.classes = ["can", "plate", "ball", "block", "box", "wallet"]  # List of classes to detect
+        self.classes = ["can", "plate", "ball", "block", "box", "wallet", "napkin"]  # List of classes to detect
 
     def send_detection_request(self):
         """Sends a detection request and returns a collection of detected objects."""
