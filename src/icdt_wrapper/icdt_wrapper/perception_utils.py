@@ -97,13 +97,13 @@ class DetectedObjectsCollection:
 
 # DetectionClient Class for Handling Detection Requests
 class DetectionClient:
-    def __init__(self, node: Node):
-        self.client = node.create_client(ObjectDetection, 'detect_objects')
+    def __init__(self, node: Node, detection_service: str):
+        self.client = node.create_client(ObjectDetection, detection_service)
         while not self.client.wait_for_service(timeout_sec=1.0):
             node.get_logger().info('Waiting for service detect_objects to be available...')
         self.request = ObjectDetection.Request()
         self.node = node
-        self.classes = ["can", "plate", "ball", "block", "box"]  # List of classes to detect
+        self.classes = ["can", "plate", "ball", "block", "box", "wallet"]  # List of classes to detect
 
     def send_detection_request(self):
         """Sends a detection request and returns a collection of detected objects."""

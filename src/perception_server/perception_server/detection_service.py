@@ -60,15 +60,12 @@ def objects_to_json(objects):
 
 
 class Object:
-    def __init__(self, label, score, box):
+    def __init__(self, label, score, box, intrinsics, width):
         self.label = label
         self.score = score
 
         # 2D Coordinates
-        # D405
-        scale = 960 / 848
-        # D415
-        # scale = 960/1280
+        scale = 960 / width
         scaled_box = map_bbox_to_original(box, scale)
         self.bbox = list(map(int, scaled_box))  # [x1, y1, x2, y2]
         self.center = (
@@ -76,11 +73,10 @@ class Object:
             int((scaled_box[1] + scaled_box[3]) / 2),
         )
 
-        # D405 Intrinsics for 3D Projection
-        self.fx = 425.19189453125
-        self.fy = 424.6562805175781
-        self.cx = 422.978515625
-        self.cy = 242.1155242919922
+        self.fx = intrinsics['fx']
+        self.fy = intrinsics['fy']
+        self.cx = intrinsics['cx']
+        self.cy = intrinsics['cy']
 
         # D415 Intrinsics for 3D Projection
         # self.fx=910.8426
@@ -149,17 +145,45 @@ class Object:
 
 class DetectionService(Node):
     def __init__(self):
+        # Get node name from parameters
         super().__init__("detection_service")
 
-        # ROS Setup
-        # D405
-        self.rgb_topic = "/camera/color/image_rect_raw"
+        self.node_name = self.get_name()
+        self.get_logger().info(f"Current node name: {self.node_name}")
 
-        # D415
-        # self.rgb_topic = "/camera/color/image_raw"
-        self.depth_topic = "/camera/aligned_depth_to_color/image_raw"
-        self.detection_viz_topic = "/camera/color/detections"
-        self.pose_array_topic = "/camera/color/pose_array"
+        self.declare_parameter('rgb_topic', '/default')
+        self.declare_parameter('depth_topic', '/default')
+        self.declare_parameter('detection_viz_topic', '/default')
+        self.declare_parameter('pose_array_topic', '/default')
+        self.declare_parameter('camera_frame_id', '/default')
+        self.declare_parameter('world_frame_id', '/default')
+        self.declare_parameter('width', 848)
+        self.declare_parameter('intrinsics', [0.0, 0.0, 0.0, 0.0])  # [fx, fy, cx, cy]
+        self.declare_parameter('orientation', [0.0, 0.0, 0.0, 0.0])  # [x, y, z, w]
+
+        self.rgb_topic = self.get_parameter('rgb_topic').value
+        self.depth_topic = self.get_parameter('depth_topic').value
+        self.detection_viz_topic = self.get_parameter('detection_viz_topic').value
+        self.pose_array_topic = self.get_parameter('pose_array_topic').value
+        self.camera_frame_id = self.get_parameter('camera_frame_id').value
+        self.world_frame_id = self.get_parameter('world_frame_id').value
+        self.width = self.get_parameter('width').value
+        intrinsics_array = self.get_parameter('intrinsics').value
+        self.intrinsics = {
+            'fx': intrinsics_array[0],
+            'fy': intrinsics_array[1],
+            'cx': intrinsics_array[2],
+            'cy': intrinsics_array[3]
+        }
+        orientation_array = self.get_parameter('orientation').value
+        self.orientation = {
+            'x': orientation_array[0],
+            'y': orientation_array[1],
+            'z': orientation_array[2],
+            'w': orientation_array[3]
+        }
+
+
         self.rgb_sub = self.create_subscription(
             ImageMsg, self.rgb_topic, self.rgb_callback, 10
         )
@@ -177,13 +201,13 @@ class DetectionService(Node):
         self.last_rgb_image = None
 
         # Service Setup
-        self.srv = self.create_service(ObjectDetection, 'detect_objects', self.detect_objects_callback)
+        self.srv = self.create_service(ObjectDetection, 'detect_objects_' + self.node_name, self.detect_objects_callback)
 
         # OwlV2 Setup
         self.detection_model = owlv2.ObjectDetectionModel()
 
         self.logger = self.get_logger()
-        self.logger.info("Detection Service initialized")
+        self.logger.info(f"Detection Service initialized - detect_objects_{self.node_name}")
 
     def rgb_callback(self, msg):
         cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -222,14 +246,14 @@ class DetectionService(Node):
         labels = [classes[label] for label in labels]
 
         objects = [
-            Object(label, score, box)
+            Object(label, score, box, self.intrinsics, self.width)
             for label, score, box in zip(labels, scores, boxes)
         ]
         # lbr
-        transform = self.tf_buffer.lookup_transform("base", "camera_color_optical_frame", rclpy.time.Time())
+        transform = self.tf_buffer.lookup_transform(self.world_frame_id, self.camera_frame_id, rclpy.time.Time())
 
         # franka
-        # transform = self.tf_buffer.lookup_transform("base", "camera_color_optical_frame", rclpy.time.Time())
+        # transform = self.tf_buffer.lookup_transform("world", "D415_color_optical_frame", rclpy.time.Time())
         
         for obj in objects:
             obj.project_to_3d(self.last_depth_image)
@@ -279,7 +303,7 @@ class DetectionService(Node):
         pose_array.header.stamp = self.get_clock().now().to_msg()
 
         # lbr
-        pose_array.header.frame_id = "world"
+        pose_array.header.frame_id = self.world_frame_id
 
         # franka
         # pose_array.header.frame_id = "base"
@@ -294,17 +318,10 @@ class DetectionService(Node):
 
             # Optional: Set orientation (if needed, here it’s identity/no rotation)
             
-            # lbr
-            pose.orientation.x = 0.0
-            pose.orientation.y = 1.0
-            pose.orientation.z = 0.0
-            pose.orientation.w = 0.0
-
-            # franka
-            # pose.orientation.x = -1.0
-            # pose.orientation.y = 0.0
-            # pose.orientation.z = 0.0
-            # pose.orientation.w = 0.0
+            pose.orientation.x = self.orientation['x']
+            pose.orientation.y = self.orientation['y']
+            pose.orientation.z = self.orientation['z']
+            pose.orientation.w = self.orientation['w']
 
             print(f"{obj.label} Pose: {obj.center_3d}")
             pose_array.poses.append(pose)

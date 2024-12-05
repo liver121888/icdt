@@ -424,13 +424,7 @@ Visualization Manager:
                           fr3_link8:
                             fr3_hand:
                               fr3_hand_tcp:
-                                camera_link:
-                                  camera_color_frame:
-                                    camera_color_optical_frame:
-                                      {}
-                                  camera_depth_frame:
-                                    camera_depth_optical_frame:
-                                      {}
+                                {}
                               fr3_leftfinger:
                                 {}
                               fr3_rightfinger:
@@ -552,25 +546,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 1.102452278137207
+      Distance: 0.7872658967971802
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.2750740051269531
-        Y: 0.043233610689640045
-        Z: 0.2531837821006775
+        X: 0.25435587763786316
+        Y: 0.01753353700041771
+        Z: 0.37034761905670166
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6153982877731323
+      Pitch: 0.09539835155010223
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.8035759925842285
+      Yaw: 5.933572769165039
     Saved: ~
 Window Geometry:
   Displays:

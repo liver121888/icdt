@@ -10,89 +10,90 @@ from icdt_interfaces.srv import ObjectDetection, MotionPlanning
 from franka_msgs.action import Move
 from icdt_wrapper.perception_utils import *
 from icdt_wrapper.llm import LLMRouter, SYSTEM_PROMPT
+from geometry_msgs.msg import PoseStamped
 
-
-# RobotInterfaceNode as Central Interface for Robotics Functions
-class RobotInterfaceNode(Node):
-    def __init__(self):
-        super().__init__('robot_interface')
-        self.detection_client = DetectionClient(self)  # Initialize the detection client
-        # lbr
-        # self.motion_planning_cli = self.create_client(MotionPlanning, '/lbr_motion_planning')
-        # franka
-        self.motion_planning_cli = self.create_client(MotionPlanning, '/franka_motion_planning')
+# Base RobotInterface Class
+class RobotInterface(Node):
+    def __init__(self, node_name, motion_planning_service, detection_service):
+        super().__init__(node_name)
+        self.motion_planning_cli = self.create_client(MotionPlanning, motion_planning_service)
         while not self.motion_planning_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        
-        self.gripper_action_client = ActionClient(self, Move, '/fr3_gripper/move')
-        while not self.gripper_action_client.wait_for_server(timeout_sec=1.0):
-            self.get_logger().info('action server not available, waiting again...')
+            self.get_logger().info('Motion planning service not available, waiting again...')
 
-        # LLM Stuff
+        self.detection_client = DetectionClient(self, detection_service)
+
         self.llm_router = LLMRouter("gpt-4o", SYSTEM_PROMPT)
 
-    def detect_objects(self):
-        """Calls the DetectionClient to detect objects and returns a collection of detected objects."""
-        if self.detection_client:
-            return self.detection_client.send_detection_request()
-        else:
-            self.get_logger().error("Detection client is not initialized.")
-            return DetectedObjectsCollection([])
-        
     def move_robot(self, goal_pose, dummy=False):
         """Move robot from current pose to target pose."""
         if dummy:
             self.get_logger().info("[Dummy] moving robot to target pose")
             return
-        
-        # change frame to fix pilz error
+
         target_pose = PoseStamped()
         target_pose.header.frame_id = "world"
-        target_pose.pose.position.x = goal_pose.pose.position.x
-        target_pose.pose.position.y = goal_pose.pose.position.y
-        target_pose.pose.position.z = goal_pose.pose.position.z
-        target_pose.pose.orientation.x = goal_pose.pose.orientation.x
-        target_pose.pose.orientation.y = goal_pose.pose.orientation.y
-        target_pose.pose.orientation.z = goal_pose.pose.orientation.z
-        target_pose.pose.orientation.w = goal_pose.pose.orientation.w
+        target_pose.pose = goal_pose.pose
 
         motion_planning_req = MotionPlanning.Request()
         motion_planning_req.goal = target_pose
         self.get_logger().info("Sending goal to motion planning service")
 
-        # Call the service and wait for the result
         future = self.motion_planning_cli.call_async(motion_planning_req)
         rclpy.spin_until_future_complete(self, future)
 
-        # Check if we received a response
         if future.done():
             response = future.result()
             self.get_logger().info(f'Result of motion_planning service: {response.success}')
         else:
             self.get_logger().error("Failed to receive a response from motion planning service")
 
+    def detect_objects(self):
+        """Calls the Object Detection service to detect objects and returns the results."""
+        if self.detection_client:
+            return self.detection_client.send_detection_request()
+        else:
+            self.get_logger().error("Detection client is not initialized.")
+            return DetectedObjectsCollection([])
+
+# Derived Class for LBR Robot
+class LBRInterface(RobotInterface):
+    def __init__(self):
+        super().__init__('lbr_interface', '/lbr/lbr_motion_planning', '/detect_objects_d405')
+
     def move_home(self, dummy=False):
-        """Move Robot to Home Position."""
+        """Move LBR Robot to Home Position."""
         if dummy:
-            self.get_logger().info("[Dummy] moving robot to home position")
+            self.get_logger().info("[Dummy] moving LBR robot to home position")
             return
 
-        # lbr
-        # home_pose = PoseStamped()
-        # home_pose.header.frame_id = "world"
-        # home_pose.pose.position.x = -0.4
-        # home_pose.pose.position.y = 0.0
-        # home_pose.pose.position.z = 0.36
-        # home_pose.pose.orientation.x = 0.0
-        # home_pose.pose.orientation.y = 1.0
-        # home_pose.pose.orientation.z = 0.0
-        # home_pose.pose.orientation.w = 0.0
-
-        # franka
         home_pose = PoseStamped()
         home_pose.header.frame_id = "world"
-        # home_pose.pose.position.x = 0.31
-        # offset -1.3 meter, 0.31 - 1.3 ~= -1.0
+        home_pose.pose.position.x = -0.4
+        home_pose.pose.position.y = 0.0
+        home_pose.pose.position.z = 0.36
+        home_pose.pose.orientation.x = 0.0
+        home_pose.pose.orientation.y = 1.0
+        home_pose.pose.orientation.z = 0.0
+        home_pose.pose.orientation.w = 0.0
+
+        self.move_robot(home_pose)
+
+# Derived Class for Franka Robot
+class FrankaInterface(RobotInterface):
+    def __init__(self):
+        super().__init__('franka_interface', '/franka_motion_planning', '/franka_object_detection')
+        self.gripper_action_client = ActionClient(self, Move, '/fr3_gripper/move')
+        while not self.gripper_action_client.wait_for_server(timeout_sec=1.0):
+            self.get_logger().info('Gripper action server not available, waiting again...')
+
+    def move_home(self, dummy=False):
+        """Move Franka Robot to Home Position."""
+        if dummy:
+            self.get_logger().info("[Dummy] moving Franka robot to home position")
+            return
+
+        home_pose = PoseStamped()
+        home_pose.header.frame_id = "world"
         home_pose.pose.position.x = -1.0
         home_pose.pose.position.y = 0.0
         home_pose.pose.position.z = 0.485
@@ -102,15 +103,6 @@ class RobotInterfaceNode(Node):
         home_pose.pose.orientation.w = 0.0
 
         self.move_robot(home_pose)
-
-    def open_gripper(self):
-        """Open the Robot Gripper."""
-        # 0.035 on each side is open, target width is 0.07
-        self.move_gripper(target_width=0.07, speed=0.1)
-
-    def close_gripper(self):
-        """Close the Robot Gripper."""
-        self.move_gripper(target_width=0.01, speed=0.1)
 
     def move_gripper(self, target_width, speed):
         """Move the Robot Gripper to the target width."""
@@ -130,12 +122,20 @@ class RobotInterfaceNode(Node):
             )
         )
 
+    def open_gripper(self):
+        """Open the Robot Gripper."""
+        self.move_gripper(target_width=0.07, speed=0.1)
+
+    def close_gripper(self):
+        """Close the Robot Gripper."""
+        self.move_gripper(target_width=0.01, speed=0.1)
+
 # Main Interactive Loop
 def main(args=None):
     rclpy.init(args=args)
 
     # Initialize the RobotInterfaceNode instance
-    robot_interface = RobotInterfaceNode()
+    robot_interface = LBRInterface()
 
     try:
         while rclpy.ok():
@@ -150,7 +150,7 @@ def main(args=None):
             user_prompt += "\n[Instruction]\n"
             user_prompt += user_task
     
-            # llm_output = robot_interface.llm_router(user_prompt)
+            llm_output = robot_interface.llm_router(user_prompt)
 
             # dummy
             # dummy_code = """
@@ -164,8 +164,8 @@ def main(args=None):
             # else:
             #     print(f"{target_label} not found.")
             # """
-            dummy_code = """robot_interface.move_home()"""
-            llm_output = ["Dummy Reasoning", dummy_code]
+            # dummy_code = """robot_interface.open_gripper()"""
+            # llm_output = ["Dummy Reasoning", dummy_code]
 
             reasoning, valid_code = llm_output
             print(f"Reasoning: {reasoning}")
