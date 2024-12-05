@@ -7,7 +7,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 # Specify the path to whisper.cpp directory
-set(WHISPER_CPP_PATH "/path/to/whisper.cpp")  # Example: "/home/username/whisper.cpp"
+set(WHISPER_CPP_PATH "/whispercpp")  # Example: "/home/username/whisper.cpp"
 
 # Include the whisper.cpp header files
 include_directories(${WHISPER_CPP_PATH})

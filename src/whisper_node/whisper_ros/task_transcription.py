@@ -4,22 +4,35 @@ import numpy as np
 from pynput import keyboard
 import wave
 import time
+import os
 import subprocess
 import rclpy
 from std_msgs.msg import String
 from pynput.keyboard import Key, Listener
+from scipy.io import wavfile
+from scipy.signal import resample
 
 # Recording parameters
-sample_rate = 16000  # Hz
-channels = 2  # Stereo
 
 devices = sd.query_devices()
 
 # Print available devices to inspect the supported sample rates
+# Assuming 'devices' is a list of dictionaries containing device info
+
+target_device = {}
 for device in devices:
     print(device)
 
-device = 11  # Use the index for sof-hda-dsp: - (hw:1,7)
+    # Check if the device name is 'CMTECK'
+    if 'CMTECK' in device['name']:
+        target_device = device
+
+if target_device['index'] != -1:
+    print(f"Device index for CMTECK: {target_device['index']}")
+else:
+    print("CMTECK device not found.")
+    exit()
+
 recording = []
 is_recording = False
 
@@ -41,31 +54,60 @@ def record_audio():
     print("Press and hold the space bar to start recording.")
     print("Release the space bar to stop recording.")
 
-    with Listener(on_press=on_press, on_release=on_release) as listener:
-        while listener.running:
-            if is_recording:
-                audio_data = sd.rec(int(0.1 * sample_rate), samplerate=sample_rate, channels=channels, device=device)
-                sd.wait()
-                recording.append(audio_data)
-        listener.join()
+    # Audio parameters
+    input_channels = 1
+    # sample_rate = 16000.0 # Hz
 
-    # Concatenate all chunks and save to a .wav file
+    def audio_callback(indata, frames, time, status):
+        if is_recording:
+            recording.append(indata.copy())  # Append each audio chunk
+    with sd.InputStream(samplerate=target_device['default_samplerate'], channels=input_channels, device=target_device['index'], callback=audio_callback):
+        with Listener(on_press=on_press, on_release=on_release) as listener:
+            listener.join()
+
     if recording:
-        recording = np.concatenate(recording, axis=0)
-        file_name = f"TTR_prompt.wav"
+        # Concatenate all audio chunks and save as a .wav file
+        audio_data = np.concatenate(recording, axis=0)
+        print(f"Audio data range: {audio_data.min()} to {audio_data.max()}")
+
+        # Convert float32 to int16 for WAV file
+        audio_data = (audio_data * 32767).astype(np.int16)
+        file_name = "TTR_prompt.wav"
+
+        # Save audio to a WAV file
         with wave.open(file_name, 'w') as wf:
-            wf.setnchannels(channels)
+            wf.setnchannels(input_channels)
             wf.setsampwidth(2)  # 16-bit audio
-            wf.setframerate(sample_rate)
-            wf.writeframes((recording * 32767).astype(np.int16).tobytes())
+            wf.setframerate(target_device['default_samplerate'])
+            wf.writeframes(audio_data.tobytes())
+        
+        print(f"Audio recorded and saved as {file_name}")
     else:
-        pass 
+        print("No audio recorded.")
 
 def transcribe_audio():
-    print('transcribing')
-    result = subprocess.run(["/whisper.cpp/main", "-f", "TTR_prompt.wav" , "-np", "-m", "/home/kensuke/whisper.cpp/models/ggml-base.en.bin"], capture_output=True, text=True)
+    # Read the input .wav file
+    rate, data = wavfile.read("TTR_prompt.wav")
+
+    # Define the new sample rate
+    new_rate = 16000
+
+    # Calculate the number of samples for the new rate
+    new_num_samples = int(len(data) * new_rate / rate)
+
+    # Resample the data
+    resampled_data = resample(data, new_num_samples)
+
+    # Save the resampled audio
+    wavfile.write("output.wav", new_rate, resampled_data.astype(data.dtype))
+
+    print('resampled')
+
+    result = subprocess.run(["/whispercpp/main", "-f", "output.wav" , "-np", "-m", "/whispercpp/models/ggml-base.en.bin"], capture_output=True, text=True)
     task = result.stdout.split("]")[-1].strip()
+
     return task
+
 
 def main():
     rclpy.init()  # Initialize the ROS client library
@@ -98,4 +140,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
