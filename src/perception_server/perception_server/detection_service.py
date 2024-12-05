@@ -93,9 +93,13 @@ class Object:
         self.bbox_3d = None  # [x1, y1, z1, x2, y2, z2]
         self.center_3d = None  # [x, y, z]
 
+    def average_depth(self, depth_img, y,x, kernel_size=5):
+        # Get the average depth in a kernel_size x kernel_size area
+        return np.mean(depth_img[y-kernel_size//2:y+kernel_size//2, x-kernel_size//2:x+kernel_size//2])
+
     def project_to_3d(self, depth_img):
         # Get depth at the center of the bounding box
-        z_center = depth_img[self.center[1], self.center[0]]
+        z_center = self.average_depth(depth_img, self.center[1], self.center[0])
 
         # Calculate 3D coordinates of the center
         x_center_3d = (self.center[0] - self.cx) * z_center / self.fx
@@ -103,8 +107,8 @@ class Object:
         self.center_3d = [x_center_3d, y_center_3d, z_center]
 
         # Calculate 3D coordinates for the bounding box corners
-        z1 = depth_img[self.bbox[1], self.bbox[0]]  # Top-left corner
-        z2 = depth_img[self.bbox[3], self.bbox[2]]  # Bottom-right corner
+        z1 = self.average_depth(depth_img, self.bbox[1], self.bbox[0])  # Top-left corner
+        z2 = self.average_depth(depth_img, self.bbox[3], self.bbox[2])  # Bottom-right corner
 
         # Project top-left corner
         x1_3d = (self.bbox[0] - self.cx) * z1 / self.fx
@@ -135,7 +139,7 @@ class Object:
         bbox_p2 = self.point_to_world(self.bbox_3d[3:], transform)
         self.bbox_3d = np.concatenate([bbox_p1, bbox_p2])
 
-    def add_safety_margin(self, margin=0.05):
+    def add_safety_margin(self, margin=0.025):
         # Add a safety margin to the center of the object
         self.center_3d[2] += margin
 
