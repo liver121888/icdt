@@ -42,6 +42,7 @@ function run_container {
         if [ -e "/dev/ttyACM0" ]; then
             DEVICES+="--device=/dev/ttyACM0:/dev/ttyACM0 "
         fi
+        DEVICES+="--device=/dev/snd:/dev/snd "
     elif [ "$MODE" == "camera" ]; then
         for device in /dev/video*; do
             if [ -e "$device" ]; then

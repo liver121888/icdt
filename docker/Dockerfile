@@ -108,11 +108,17 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 RUN pip install ollama
 RUN pip install streamlit
 
+# For whisper.cpp
+RUN apt-get install -y libportaudio2 
+RUN pip install sounddevice
+RUN pip install pynput
+
 # Install Franka dependencies
 RUN apt-get update && apt-get install -y \
     bc \
     ca-certificates \
     ros-humble-ament-cmake-clang-format \
+    ros-humble-aruco-ros \
     libssl-dev \
     libelf-dev \
     libpoco-dev \
@@ -159,6 +165,11 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
 
 # Install the generated Debian package
 RUN dpkg -i libfranka*.deb
+
+RUN git clone https://github.com/ggerganov/whisper.cpp /whispercpp && \
+    cd /whispercpp && \
+    sh ./models/download-ggml-model.sh base.en && \
+    make -j4
 
 # Return to ROS workspace for default container entry
 WORKDIR /ros_ws
