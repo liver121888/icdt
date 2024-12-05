@@ -21,9 +21,11 @@ def launch_setup(context, *args, **kwargs):
     aruco_single = Node(
         package='aruco_ros',
         executable='single',
+        name='franka_aruco_single',
+        namespace='franka',
         parameters=[aruco_single_params],
-        remappings=[('/camera_info', '/camera/color/camera_info'),
-                    ('/image', '/camera/color/image_raw')],
+        remappings=[('/camera_info', '/D415/color/camera_info'),
+                    ('/image', '/D415/color/image_raw')],
                     # ('/image', '/camera/aligned_depth_to_color/image_raw')],
     )
 
@@ -43,17 +45,17 @@ def generate_launch_description():
     )
 
     camera_frame_arg = DeclareLaunchArgument(
-        'camera_frame', default_value='camera_color_optical_frame',
+        'camera_frame', default_value='D415_color_optical_frame',
         description='Camera frame.',
     )
 
     marker_frame_arg = DeclareLaunchArgument(
-        'marker_frame', default_value='marker_1_frame',
+        'marker_frame', default_value='franka_marker_1_frame',
         description='Frame in which the marker pose will be refered. '
     )
 
     reference_frame = DeclareLaunchArgument(
-        'reference_frame', default_value='camera_color_optical_frame',
+        'reference_frame', default_value='D415_color_optical_frame',
         description='Reference frame. '
         'Leave it empty and the pose will be published wrt param parent_name. '
     )

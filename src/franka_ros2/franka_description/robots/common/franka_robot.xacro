@@ -7,7 +7,7 @@
                       inertials
                       dynamics
                       parent:='world'
-                      xyz:='0 0 0'
+                      xyz:='-1.17 -0.01 0.026'
                       rpy:='0 0 0'
                       hand:='true'
                       ee_id:=none

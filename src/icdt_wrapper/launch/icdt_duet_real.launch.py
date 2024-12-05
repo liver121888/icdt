@@ -219,7 +219,7 @@ def generate_launch_description() -> LaunchDescription:
             # ompl_planning_pipeline_config,
             # kinematics_yaml,
         ],
-        ros_arguments=['--log-level', 'info'],
+        ros_arguments=['--log-level', 'warn'],
     )
 
     ld.add_action(rviz_node)
