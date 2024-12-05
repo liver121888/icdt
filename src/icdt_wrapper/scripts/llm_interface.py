@@ -78,10 +78,23 @@ class LBRInterface(RobotInterface):
 
         self.move_robot(home_pose)
 
+    def get_pose(self, detected_object):
+        """Get the pose of the detected object."""
+        pose = PoseStamped()
+        pose.header.frame_id = "world"
+        pose.pose.position.x = detected_object.center_3d[0]
+        pose.pose.position.y = detected_object.center_3d[1]
+        pose.pose.position.z = detected_object.center_3d[2]
+        pose.pose.orientation.x = 0.0
+        pose.pose.orientation.y = 1.0
+        pose.pose.orientation.z = 0.0
+        pose.pose.orientation.w = 0.0
+        return pose
+
 # Derived Class for Franka Robot
 class FrankaInterface(RobotInterface):
     def __init__(self):
-        super().__init__('franka_interface', '/franka_motion_planning', '/franka_object_detection')
+        super().__init__('franka_interface', '/franka_motion_planning', '/detect_objects_d415')
         self.gripper_action_client = ActionClient(self, Move, '/fr3_gripper/move')
         while not self.gripper_action_client.wait_for_server(timeout_sec=1.0):
             self.get_logger().info('Gripper action server not available, waiting again...')
@@ -94,15 +107,28 @@ class FrankaInterface(RobotInterface):
 
         home_pose = PoseStamped()
         home_pose.header.frame_id = "world"
-        home_pose.pose.position.x = -1.0
-        home_pose.pose.position.y = 0.0
-        home_pose.pose.position.z = 0.485
-        home_pose.pose.orientation.x = -1.0
+        home_pose.pose.position.x = -0.862
+        home_pose.pose.position.y = -0.01
+        home_pose.pose.position.z = 0.512
+        home_pose.pose.orientation.x = 1.0
         home_pose.pose.orientation.y = 0.0
         home_pose.pose.orientation.z = 0.0
         home_pose.pose.orientation.w = 0.0
 
         self.move_robot(home_pose)
+
+    def get_pose(self, detected_object):
+        """Get the pose of the detected object."""
+        pose = PoseStamped()
+        pose.header.frame_id = "world"
+        pose.pose.position.x = detected_object.center_3d[0]
+        pose.pose.position.y = detected_object.center_3d[1]
+        pose.pose.position.z = detected_object.center_3d[2]
+        pose.pose.orientation.x = 1.0
+        pose.pose.orientation.y = 0.0
+        pose.pose.orientation.z = 0.0
+        pose.pose.orientation.w = 0.0
+        return pose
 
     def move_gripper(self, target_width, speed):
         """Move the Robot Gripper to the target width."""
@@ -111,16 +137,19 @@ class FrankaInterface(RobotInterface):
         goal_msg.speed = speed
 
         self.get_logger().info(f'Sending gripper goal: width={target_width} m, speed={speed} m/s')
-        self.gripper_action_client.send_goal_async(
-            goal_msg,
-            feedback_callback=lambda feedback_msg: self.get_logger().info(
-                f'Feedback: Current width={feedback_msg.current_width:.3f} m'
-            )
-        ).add_done_callback(
-            lambda future: self.get_logger().info(
-                'Goal accepted' if future.result().accepted else 'Goal rejected'
-            )
-        )
+        goal_future = self.gripper_action_client.send_goal_async(goal_msg)
+
+        # Wait for the future to complete
+        rclpy.spin_until_future_complete(self, goal_future)
+        # Check the result
+        goal_handle = goal_future.result()
+        if not goal_handle.accepted:
+            print("Goal was rejected")
+            return
+        # Get the result future
+        result_future = goal_handle.get_result_async()
+        # Wait for the result to complete
+        rclpy.spin_until_future_complete(self, result_future)
 
     def open_gripper(self):
         """Open the Robot Gripper."""
@@ -135,7 +164,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # Initialize the RobotInterfaceNode instance
-    robot_interface = LBRInterface()
+    robot_interface = FrankaInterface()
 
     try:
         while rclpy.ok():
@@ -164,7 +193,7 @@ def main(args=None):
             # else:
             #     print(f"{target_label} not found.")
             # """
-            # dummy_code = """robot_interface.open_gripper()"""
+            # dummy_code = """robot_interface.close_gripper()\nrobot_interface.open_gripper()"""
             # llm_output = ["Dummy Reasoning", dummy_code]
 
             reasoning, valid_code = llm_output
