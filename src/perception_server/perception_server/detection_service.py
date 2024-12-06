@@ -93,7 +93,7 @@ class Object:
         self.bbox_3d = None  # [x1, y1, z1, x2, y2, z2]
         self.center_3d = None  # [x, y, z]
 
-    def average_depth(self, depth_img, y,x, kernel_size=5):
+    def average_depth(self, depth_img, y,x, kernel_size=3):
         # Get the average depth in a kernel_size x kernel_size area
         return np.mean(depth_img[y-kernel_size//2:y+kernel_size//2, x-kernel_size//2:x+kernel_size//2])
 

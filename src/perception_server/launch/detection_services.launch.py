@@ -23,8 +23,8 @@ def generate_launch_description():
                 242.1155242919922
             ]},
             {'orientation': [
-                0.0,
-                1.0,
+                -0.7071,
+                0.7071,
                 0.0,
                 0.0
             ]}
