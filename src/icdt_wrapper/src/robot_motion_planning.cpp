@@ -118,8 +118,13 @@ public:
     
     if (!ik_success)
     {
+      RCLCPP_ERROR(LOGGER, "IK failed");
       response->success = false;
       return;
+    }
+    else
+    {
+      RCLCPP_INFO(LOGGER, "IK success");
     }
 
     std::vector<double> joint_values;
@@ -130,7 +135,7 @@ public:
     }
 
     moveit_msgs::msg::Constraints goal_constraints =
-        kinematic_constraints::constructGoalConstraints(*(goal_state_.get()), joint_model_group_.get());
+        kinematic_constraints::constructGoalConstraints(*(goal_state_.get()), joint_model_group_.get(), 1e-4);
 
     // if don't use IK
     // moveit_msgs::msg::Constraints goal_constraints =
@@ -144,6 +149,7 @@ public:
     {
       // isblocking or not
       planning_component_->execute(true);
+      rclcpp::sleep_for(std::chrono::seconds(1));
       response->success = true;
     }
     else
