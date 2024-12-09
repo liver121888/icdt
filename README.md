@@ -19,6 +19,14 @@ Modify the name on line 27 in whisper_node/whisper_ros/task_transcription.py
 
 ## Usage
 
+### Docker setup
+Grant docker permission
+```
+sudo groupadd docker
+sudo gpasswd -a $USER docker
+newgrp docker
+```
+
 ### OPENAI_KEY
 Change all occurances of 'OPENAI_KEY' in icdt_wrapper/icdt_wrapper folder
 ```
