@@ -80,16 +80,6 @@ class LBRInterface(RobotInterface):
         home_pose.pose.orientation.z = 0.0
         home_pose.pose.orientation.w = 0.0
 
-        # home_pose = PoseStamped()
-        # home_pose.header.frame_id = "world"
-        # home_pose.pose.position.x = -0.051
-        # home_pose.pose.position.y = -0.261
-        # home_pose.pose.position.z = 0.186
-        # home_pose.pose.orientation.x = 0.0
-        # home_pose.pose.orientation.y = 1.0
-        # home_pose.pose.orientation.z = 0.0
-        # home_pose.pose.orientation.w = 0.0
-
         self.move_robot(home_pose)
 
     def move_to_scan_pose(self, dummy=False):
