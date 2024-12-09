@@ -19,8 +19,8 @@ class NumpyDecoder(json.JSONDecoder):
                 score=obj['score'],
                 bbox=np.array(obj['bbox']),
                 center=np.array(obj['center']),
-                bbox_3d=np.array(obj['bbox_3d']) if obj['bbox_3d'] else None,
-                center_3d=np.array(obj['center_3d']) if obj['center_3d'] else None,
+                bbox_3d=np.array(obj['bbox_3d']) if obj['bbox_3d'] else None, # [x1, y1, z1, x2, y2, z2]
+                center_3d=np.array(obj['center_3d']) if obj['center_3d'] else None, # [x, y, z]
             )
         return obj
 
@@ -35,6 +35,9 @@ class DetectedObject:
         self.center = center
         self.bbox_3d = bbox_3d
         self.center_3d = center_3d
+        self.x_width = bbox[1] - bbox[0]
+        self.y_width = bbox[3] - bbox[2]
+        self.z_width = bbox_3d[5] - bbox_3d[2]
 
     def __eq__(self, other):
         """Override equality to allow detection search by label in DetectedObjectsCollection."""
