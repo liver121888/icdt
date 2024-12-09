@@ -81,9 +81,7 @@ RUN pip install torch==2.3.1+cu121 torchvision==0.18.1+cu121 torchaudio==2.3.1+c
 RUN pip install -q git+https://github.com/huggingface/transformers.git
 
 # Install Remaining Dependencies
-RUN pip install open3d==0.18.0
-RUN pip install opencv-python==4.9.0.80
-RUN pip install transforms3d==0.4.2
+RUN pip install open3d==0.18.0 opencv-python==4.9.0.80 transforms3d==0.4.2
 RUN apt install -y ros-humble-tf-transformations
 RUN pip install numpy==1.24.2
 
@@ -108,10 +106,9 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 RUN pip install ollama
 RUN pip install streamlit
 
-# For whisper.cpp
+# For whisper.cpp, colorized terminal output
 RUN apt-get install -y libportaudio2 
-RUN pip install sounddevice
-RUN pip install pynput
+RUN pip install sounddevice pynput termcolor
 
 # Install Franka dependencies
 RUN apt-get update && apt-get install -y \
