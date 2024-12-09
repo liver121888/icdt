@@ -121,6 +121,7 @@ RUN apt-get update && apt-get install -y \
     libpoco-dev \
     libeigen3-dev \
     dpkg \
+    ffmpeg \
     bison \
     flex \
     dwarves \
