@@ -9,7 +9,8 @@ import time
 from icdt_interfaces.srv import ObjectDetection, MotionPlanning
 from franka_msgs.action import Move
 from icdt_wrapper.perception_utils import *
-from icdt_wrapper.llm import LLMRouter, SYSTEM_PROMPT
+# from icdt_wrapper.llm import LLMRouter, SYSTEM_PROMPT
+from icdt_wrapper.llm import LLMRouter, LBR_SYSTEM_PROMPT as SYSTEM_PROMPT
 from geometry_msgs.msg import PoseStamped
 
 # Base RobotInterface Class
@@ -68,15 +69,43 @@ class LBRInterface(RobotInterface):
 
         home_pose = PoseStamped()
         home_pose.header.frame_id = "world"
-        home_pose.pose.position.x = -0.4
+        home_pose.pose.position.x = -0.22
         home_pose.pose.position.y = 0.0
-        home_pose.pose.position.z = 0.36
+        home_pose.pose.position.z = 0.19
         home_pose.pose.orientation.x = 0.0
         home_pose.pose.orientation.y = 1.0
         home_pose.pose.orientation.z = 0.0
         home_pose.pose.orientation.w = 0.0
 
+        # home_pose = PoseStamped()
+        # home_pose.header.frame_id = "world"
+        # home_pose.pose.position.x = -0.051
+        # home_pose.pose.position.y = -0.261
+        # home_pose.pose.position.z = 0.186
+        # home_pose.pose.orientation.x = 0.0
+        # home_pose.pose.orientation.y = 1.0
+        # home_pose.pose.orientation.z = 0.0
+        # home_pose.pose.orientation.w = 0.0
+
         self.move_robot(home_pose)
+
+    def move_to_scan_pose(self, dummy=False):
+        """Move LBR Robot to Scan Pose."""
+        if dummy:
+            self.get_logger().info("[Dummy] moving LBR robot to scan pose")
+            return
+
+        scan_pose = PoseStamped()
+        scan_pose.header.frame_id = "world"
+        scan_pose.pose.position.x = -0.4
+        scan_pose.pose.position.y = 0.0
+        scan_pose.pose.position.z = 0.19
+        scan_pose.pose.orientation.x = 0.0
+        scan_pose.pose.orientation.y = 1.0
+        scan_pose.pose.orientation.z = 0.0
+        scan_pose.pose.orientation.w = 0.0
+
+        self.move_robot(scan_pose)
 
     def get_pose(self, detected_object):
         """Get the pose of the detected object."""
@@ -85,11 +114,78 @@ class LBRInterface(RobotInterface):
         pose.pose.position.x = detected_object.center_3d[0]
         pose.pose.position.y = detected_object.center_3d[1]
         pose.pose.position.z = detected_object.center_3d[2]
-        pose.pose.orientation.x = 0.0
-        pose.pose.orientation.y = 1.0
+        pose.pose.orientation.x = -0.7071
+        pose.pose.orientation.y = 0.7071
         pose.pose.orientation.z = 0.0
         pose.pose.orientation.w = 0.0
         return pose
+    
+    def sweep_left(self, sweep_pose):
+        """Sweep the robot end effector in a straight line."""
+
+        sweep_hover_pose = PoseStamped()
+        sweep_hover_pose.header.frame_id = "world"
+        sweep_hover_pose.pose.position.x = sweep_pose.pose.position.x
+        sweep_hover_pose.pose.position.y = sweep_pose.pose.position.y + 0.1
+        sweep_hover_pose.pose.position.z = sweep_pose.pose.position.z
+        sweep_hover_pose.pose.orientation = sweep_pose.pose.orientation
+
+        self.move_robot(sweep_hover_pose)
+
+        start_sweep_pose = PoseStamped()
+        start_sweep_pose.header.frame_id = "world"
+        start_sweep_pose.pose.position.x = sweep_hover_pose.pose.position.x
+        start_sweep_pose.pose.position.y = sweep_hover_pose.pose.position.y
+        actual_z = sweep_hover_pose.pose.position.z - 0.025
+        actual_z = actual_z * 0.25
+        start_sweep_pose.pose.position.z = actual_z
+        start_sweep_pose.pose.orientation = sweep_hover_pose.pose.orientation
+
+        self.get_logger().info(f"start sweep pose z: {start_sweep_pose.pose.position.z}")
+        self.move_robot(start_sweep_pose)
+
+        end_sweep_pose = PoseStamped()
+        end_sweep_pose.header.frame_id = "world"
+        end_sweep_pose.pose.position.x = start_sweep_pose.pose.position.x
+        end_sweep_pose.pose.position.y = start_sweep_pose.pose.position.y - 0.35
+        end_sweep_pose.pose.position.z = actual_z
+        end_sweep_pose.pose.orientation = start_sweep_pose.pose.orientation
+
+        self.get_logger().info(f"end sweep pose z: {end_sweep_pose.pose.position.z}")
+        self.move_robot(end_sweep_pose)
+
+    def sweep_right(self, sweep_pose):
+        """Sweep the robot end effector in a straight line."""
+
+        sweep_hover_pose = PoseStamped()
+        sweep_hover_pose.header.frame_id = "world"
+        sweep_hover_pose.pose.position.x = sweep_pose.pose.position.x
+        sweep_hover_pose.pose.position.y = sweep_pose.pose.position.y - 0.1
+        sweep_hover_pose.pose.position.z = sweep_pose.pose.position.z
+        sweep_hover_pose.pose.orientation = sweep_pose.pose.orientation
+
+        self.move_robot(sweep_hover_pose)
+
+        start_sweep_pose = PoseStamped()
+        start_sweep_pose.header.frame_id = "world"
+        start_sweep_pose.pose.position.x = sweep_hover_pose.pose.position.x
+        start_sweep_pose.pose.position.y = sweep_hover_pose.pose.position.y
+        actual_z = sweep_hover_pose.pose.position.z - 0.025
+        actual_z = actual_z * 0.25
+        start_sweep_pose.pose.position.z = actual_z
+        start_sweep_pose.pose.orientation = sweep_hover_pose.pose.orientation
+
+        self.move_robot(start_sweep_pose)
+
+        end_sweep_pose = PoseStamped()
+        end_sweep_pose.header.frame_id = "world"
+        end_sweep_pose.pose.position.x = start_sweep_pose.pose.position.x
+        end_sweep_pose.pose.position.y = start_sweep_pose.pose.position.y + 0.35
+        end_sweep_pose.pose.position.z = actual_z
+        end_sweep_pose.pose.orientation = start_sweep_pose.pose.orientation
+
+        self.move_robot(end_sweep_pose)
+
 
 # Derived Class for Franka Robot
 class FrankaInterface(RobotInterface):
@@ -107,7 +203,7 @@ class FrankaInterface(RobotInterface):
 
         home_pose = PoseStamped()
         home_pose.header.frame_id = "world"
-        home_pose.pose.position.x = -0.862
+        home_pose.pose.position.x = -0.95
         home_pose.pose.position.y = -0.01
         home_pose.pose.position.z = 0.512
         home_pose.pose.orientation.x = 1.0
@@ -116,6 +212,24 @@ class FrankaInterface(RobotInterface):
         home_pose.pose.orientation.w = 0.0
 
         self.move_robot(home_pose)
+
+    def move_to_scan_pose(self, dummy=False):
+        """Move Franka Robot to Scan Pose."""
+        if dummy:
+            self.get_logger().info("[Dummy] moving Franka robot to scan pose")
+            return
+        
+        scan_pose = PoseStamped()
+        scan_pose.header.frame_id = "world"
+        scan_pose.pose.position.x = -0.635
+        scan_pose.pose.position.y = -0.01
+        scan_pose.pose.position.z = 0.512
+        scan_pose.pose.orientation.x = 1.0
+        scan_pose.pose.orientation.y = 0.0
+        scan_pose.pose.orientation.z = 0.0
+        scan_pose.pose.orientation.w = 0.0
+
+        self.move_robot(scan_pose)
 
     def get_pose(self, detected_object):
         """Get the pose of the detected object."""
@@ -144,27 +258,29 @@ class FrankaInterface(RobotInterface):
         # Check the result
         goal_handle = goal_future.result()
         if not goal_handle.accepted:
-            print("Goal was rejected")
+            self.get_logger().info("Gripper goal was rejected")
             return
         # Get the result future
         result_future = goal_handle.get_result_async()
         # Wait for the result to complete
         rclpy.spin_until_future_complete(self, result_future)
+        self.get_logger().info("Gripper goal was executed")
+
 
     def open_gripper(self):
         """Open the Robot Gripper."""
-        self.move_gripper(target_width=0.07, speed=0.1)
+        self.move_gripper(target_width=0.07, speed=0.5)
 
     def close_gripper(self):
         """Close the Robot Gripper."""
-        self.move_gripper(target_width=0.01, speed=0.1)
+        self.move_gripper(target_width=0.0, speed=0.5)
 
 # Main Interactive Loop
 def main(args=None):
     rclpy.init(args=args)
 
     # Initialize the RobotInterfaceNode instance
-    robot_interface = FrankaInterface()
+    robot_interface = LBRInterface()
 
     try:
         while rclpy.ok():
@@ -173,26 +289,17 @@ def main(args=None):
             [Scene Description]
             """
             user_task = input("Prompt: ").strip()
+            robot_interface.move_to_scan_pose()
             detections = robot_interface.detect_objects()
             scene_description = detections.get_scene_description()
+            print(f"Scene Description: {scene_description}")
             user_prompt += scene_description
             user_prompt += "\n[Instruction]\n"
             user_prompt += user_task
     
             llm_output = robot_interface.llm_router(user_prompt)
 
-            # dummy
-            # dummy_code = """
-            # target_label = 'can'    
-            # if target_label in detections:
-            #     detected_object = detections.find(target_label)
-            #     if detected_object:
-            #         print(f"{detected_object.label} found at {detected_object.center_3d}")
-            #         print(f"Moving to {detected_object.center_3d}")
-            #         robot_interface.move_robot(detected_object.get_pose())
-            # else:
-            #     print(f"{target_label} not found.")
-            # """
+            # dummy code for testing
             # dummy_code = """robot_interface.close_gripper()\nrobot_interface.open_gripper()"""
             # llm_output = ["Dummy Reasoning", dummy_code]
 
@@ -204,7 +311,6 @@ def main(args=None):
                 if if_execute == "y":
                     exec(valid_code)
                 time.sleep(2)
-                # robot_interface.move_home()
 
     except KeyboardInterrupt:
         print("Shutting down.")
