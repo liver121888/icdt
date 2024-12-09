@@ -23,14 +23,14 @@ target_device = {}
 for device in devices:
     print(device)
 
-    # Check if the device name is 'CMTECK'
+    # Check if the target_device exists
     if 'CMTECK' in device['name']:
         target_device = device
 
 if target_device['index'] != -1:
-    print(f"Device index for CMTECK: {target_device['index']}")
+    print(f"Device index for target_device: {target_device['index']}")
 else:
-    print("CMTECK device not found.")
+    print("target_device not found.")
     exit()
 
 recording = []
@@ -56,7 +56,6 @@ def record_audio():
 
     # Audio parameters
     input_channels = 1
-    # sample_rate = 16000.0 # Hz
 
     def audio_callback(indata, frames, time, status):
         if is_recording:
